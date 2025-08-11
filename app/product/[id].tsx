@@ -83,13 +83,19 @@ export default function ProductDetailScreen() {
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => router.back()}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <IconSymbol name="arrow.left" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
           {product.name}
         </Text>
-        <TouchableOpacity style={styles.shareButton}>
+        <TouchableOpacity 
+          style={styles.shareButton}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <IconSymbol name="square.and.arrow.up" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
@@ -336,7 +342,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   backButton: {
-    padding: Spacing.xs,
+    padding: Spacing.sm,
+    marginLeft: -Spacing.xs, // Compensate for padding to align with edge
+    borderRadius: Layout.borderRadius.sm,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        userSelect: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitTapHighlightColor: 'transparent',
+      },
+    }),
   },
   headerTitle: {
     ...TextStyles.h5,
@@ -345,7 +361,17 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.md,
   },
   shareButton: {
-    padding: Spacing.xs,
+    padding: Spacing.sm,
+    marginRight: -Spacing.xs, // Compensate for padding to align with edge
+    borderRadius: Layout.borderRadius.sm,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        userSelect: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitTapHighlightColor: 'transparent',
+      },
+    }),
   },
   scrollView: {
     flex: 1,
