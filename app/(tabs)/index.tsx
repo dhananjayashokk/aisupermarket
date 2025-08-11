@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, FlatList } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, FlatList, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
@@ -101,48 +101,52 @@ export default function HomeScreen() {
 
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <View style={styles.headerTop}>
-          <View style={styles.locationContainer}>
-            <IconSymbol name="location" size={20} color={colors.textInverse} />
-            <View>
-              <Text style={[styles.locationLabel, { color: colors.textInverse + 'CC' }]}>
-                Deliver to
-              </Text>
-              <Text style={[styles.locationText, { color: colors.textInverse }]}>
-                Home - 560034
-              </Text>
+      <SafeAreaView style={[styles.headerContainer, { backgroundColor: colors.primary }]}>
+        <View style={[styles.header, { backgroundColor: colors.primary }]}>
+          <View style={styles.headerTop}>
+            <View style={styles.locationContainer}>
+              <IconSymbol name="location" size={20} color={colors.textInverse} />
+              <View>
+                <Text style={[styles.locationLabel, { color: colors.textInverse + 'CC' }]}>
+                  Deliver to
+                </Text>
+                <Text style={[styles.locationText, { color: colors.textInverse }]}>
+                  Home - 560034
+                </Text>
+              </View>
+            </View>
+            <View style={styles.headerActions}>
+              <ThemeToggle />
+              <TouchableOpacity style={styles.profileButton}>
+                <IconSymbol name="person.circle" size={28} color={colors.textInverse} />
+              </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.headerActions}>
-            <ThemeToggle />
-            <TouchableOpacity style={styles.profileButton}>
-              <IconSymbol name="person.circle" size={28} color={colors.textInverse} />
-            </TouchableOpacity>
-          </View>
+          
+          {/* Search Bar */}
+          <TouchableOpacity 
+            style={[styles.searchBar, { backgroundColor: colors.background }]}
+            activeOpacity={0.8}
+          >
+            <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
+            <Text style={[styles.searchPlaceholder, { color: colors.textSecondary }]}>
+              Search for products, stores...
+            </Text>
+          </TouchableOpacity>
         </View>
-        
-        {/* Search Bar */}
-        <TouchableOpacity 
-          style={[styles.searchBar, { backgroundColor: colors.background }]}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
-          <Text style={[styles.searchPlaceholder, { color: colors.textSecondary }]}>
-            Search for products, stores...
-          </Text>
-        </TouchableOpacity>
-      </View>
+      </SafeAreaView>
 
-      <ScrollView 
-        style={styles.scrollView}
+      {/* Main Content */}
+      <FlatList
+        data={mockStores}
+        renderItem={renderStoreCard}
+        keyExtractor={(item) => item.id}
+        style={styles.mainList}
+        contentContainerStyle={styles.mainListContent}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Nearby Stores */}
-        <View style={styles.section}>
+        ListHeaderComponent={
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Nearby Stores
@@ -153,23 +157,32 @@ export default function HomeScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-          
-          <FlatList
-            data={mockStores}
-            renderItem={renderStoreCard}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            contentContainerStyle={styles.storesList}
-          />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        }
+        ListHeaderComponentStyle={styles.listHeader}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    ...Platform.select({
+      web: {
+        minHeight: '100vh',
+        maxHeight: '100vh',
+        overflow: 'hidden',
+      },
+    }),
+  },
+  headerContainer: {
+    zIndex: 10,
+    ...Platform.select({
+      web: {
+        position: 'relative',
+        flexShrink: 0,
+      },
+    }),
   },
   header: {
     paddingTop: Spacing.md,
@@ -215,11 +228,32 @@ const styles = StyleSheet.create({
     ...TextStyles.body,
     marginLeft: Spacing.md,
   },
-  scrollView: {
+  mainList: {
     flex: 1,
+    ...Platform.select({
+      web: {
+        minHeight: '100vh',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+      },
+    }),
   },
-  scrollContent: {
-    paddingBottom: Spacing.xxxl + 60, // Account for tab bar
+  mainListContent: {
+    flexGrow: 1,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Platform.select({
+      web: Spacing.xxxl + 80, // Extra padding for web mobile
+      default: Spacing.xxxl + 60,
+    }),
+    ...Platform.select({
+      web: {
+        minHeight: 'calc(100vh - 140px)', // Subtract header height
+      },
+    }),
+  },
+  listHeader: {
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.md,
   },
   section: {
     marginTop: Spacing.xl,
@@ -228,20 +262,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
   },
   sectionTitle: {
     ...TextStyles.h5,
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
+    flex: 1,
   },
   seeAll: {
     ...TextStyles.body,
     fontWeight: Typography.fontWeight.semibold,
-  },
-  storesList: {
-    paddingHorizontal: Spacing.lg,
   },
   storeCard: {
     flexDirection: 'row',
