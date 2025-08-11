@@ -17,10 +17,10 @@ AiSupermart is an Indian supermarket aggregator mobile app built with React Nati
 - **Theme Support**: Complete dark/light mode implementation
 
 ## Color Palette
-### Brand Colors
-- Primary Orange: #FF8C42 (Light) / #FFA366 (Dark)
-- Fresh Green: #4CAF50 (Light) / #66BB6A (Dark)
-- Bright Yellow: #FFD54F (Light) / #FFE082 (Dark)
+### Brand Colors - Kerala Green Inspired
+- Primary Kerala Green: #2E7D32 (Light) / #4CAF50 (Dark) - Represents Kerala's lush forests
+- Secondary Coral: #FF8A65 (Light) / #FFAB91 (Dark) - Complements the green beautifully  
+- Bright Yellow: #FFD54F (Light) / #FFE082 (Dark) - Accent color for highlights
 
 ## Key Features
 1. Phone number authentication with OTP

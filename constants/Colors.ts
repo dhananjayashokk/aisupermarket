@@ -1,19 +1,20 @@
 /**
  * AiSupermart Color System
- * Indian market-inspired palette with complete light/dark theme support
+ * Kerala-inspired green palette representing the state's lush greenery
+ * Complete light/dark theme support with authentic local market feel
  */
 
 export const Colors = {
   light: {
-    // Primary Brand Colors
-    primary: '#FF8C42',         // Warm Orange - CTAs, active states
-    primaryLight: '#FFB380',    // Light orange - hover states
-    primaryDark: '#E56B20',     // Dark orange - pressed states
+    // Primary Brand Colors - Kerala Green Inspired
+    primary: '#2E7D32',         // Kerala Forest Green - CTAs, active states
+    primaryLight: '#4CAF50',    // Light Kerala Green - hover states  
+    primaryDark: '#1B5E20',     // Deep Kerala Green - pressed states
     
     // Secondary Colors
-    secondary: '#4CAF50',       // Fresh Green - success, positive
-    secondaryLight: '#81C784',  // Light green
-    secondaryDark: '#388E3C',   // Dark green
+    secondary: '#FF8A65',       // Warm Coral - complements Kerala green
+    secondaryLight: '#FFAB91',  // Light coral
+    secondaryDark: '#FF5722',   // Vibrant coral
     
     // Accent Colors
     accent: '#FFD54F',          // Bright Yellow - highlights
@@ -37,7 +38,7 @@ export const Colors = {
     overlay: 'rgba(0,0,0,0.3)', // Modal overlays
     
     // Semantic Colors
-    success: '#4CAF50',        // Success states
+    success: '#2E7D32',        // Success states - Kerala Green
     error: '#F44336',          // Error states
     warning: '#FF9800',        // Warning states
     info: '#2196F3',           // Info states
@@ -48,21 +49,21 @@ export const Colors = {
     discount: '#FF6B6B',       // Discount badges
     
     // Legacy (for compatibility)
-    tint: '#FF8C42',
+    tint: '#2E7D32',
     icon: '#666666',
     tabIconDefault: '#999999',
-    tabIconSelected: '#FF8C42',
+    tabIconSelected: '#2E7D32',
   },
   dark: {
-    // Primary Brand Colors
-    primary: '#FFA366',         // Softer Orange for dark mode
-    primaryLight: '#FFB88C',    
-    primaryDark: '#FF8C42',     
+    // Primary Brand Colors - Kerala Green for Dark Mode
+    primary: '#4CAF50',         // Brighter Kerala Green for dark mode visibility
+    primaryLight: '#66BB6A',    // Light Kerala Green
+    primaryDark: '#2E7D32',     // Forest Kerala Green     
     
-    // Secondary Colors
-    secondary: '#66BB6A',       // Softer Green
-    secondaryLight: '#81C784',  
-    secondaryDark: '#4CAF50',   
+    // Secondary Colors  
+    secondary: '#FFAB91',       // Soft Coral for dark mode
+    secondaryLight: '#FFCC80',  // Light coral
+    secondaryDark: '#FF8A65',   // Warm coral   
     
     // Accent Colors
     accent: '#FFE082',          // Softer Yellow
@@ -86,7 +87,7 @@ export const Colors = {
     overlay: 'rgba(0,0,0,0.6)', // Modal overlays
     
     // Semantic Colors
-    success: '#66BB6A',        
+    success: '#4CAF50',        // Kerala Green for dark mode        
     error: '#EF5350',          
     warning: '#FFB74D',        
     info: '#42A5F5',           
@@ -97,9 +98,9 @@ export const Colors = {
     discount: '#FF8080',       
     
     // Legacy (for compatibility)
-    tint: '#FFA366',
+    tint: '#4CAF50',
     icon: '#B3B3B3',
     tabIconDefault: '#808080',
-    tabIconSelected: '#FFA366',
+    tabIconSelected: '#4CAF50',
   },
 };
