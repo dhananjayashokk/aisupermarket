@@ -1,75 +1,381 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { Colors } from '@/constants/Colors';
+import { Layout, Spacing } from '@/constants/Layout';
+import { Typography, TextStyles } from '@/constants/Typography';
+import { useAppColorScheme } from '@/contexts/ThemeContext';
+import { mockStores, Store } from '@/data/mockStores';
+import { router } from 'expo-router';
+import ThemeToggle from '@/components/themed/ThemeToggle';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+  const colorScheme = useAppColorScheme();
+  const colors = Colors[colorScheme];
+
+  const renderStoreCard = ({ item: store }: { item: Store }) => (
+    <TouchableOpacity
+      style={[styles.storeCard, { 
+        backgroundColor: colors.surface,
+        borderColor: colors.border,
+        ...Layout.shadow.md 
+      }]}
+      activeOpacity={0.8}
+      onPress={() => router.push(`/store/${store.id}`)}
+    >
+      {/* Store Image with Status Overlay */}
+      <View style={styles.storeImageContainer}>
+        <Image 
+          source={{ uri: store.logo }} 
+          style={[styles.storeLogo, !store.isOpen && styles.storeLogoClosed]}
+          resizeMode="cover"
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        {!store.isOpen && (
+          <View style={[styles.closedOverlay, { backgroundColor: colors.error + '80' }]}>
+            <Text style={[styles.closedOverlayText, { color: colors.textInverse }]}>
+              Closed
+            </Text>
+          </View>
+        )}
+        {store.offers.length > 0 && (
+          <View style={[styles.offerBadge, { backgroundColor: colors.accent }]}>
+            <Text style={[styles.offerText, { color: colors.text }]} numberOfLines={1}>
+              {store.offers[0]}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Store Information */}
+      <View style={styles.storeInfo}>
+        <View style={styles.storeHeader}>
+          <Text style={[styles.storeName, { color: colors.text }]} numberOfLines={1}>
+            {store.name}
+          </Text>
+          <View style={[styles.ratingContainer, { backgroundColor: colors.success + '15' }]}>
+            <IconSymbol name="star.fill" size={12} color={colors.success} />
+            <Text style={[styles.rating, { color: colors.success }]}>
+              {store.rating}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.storeMetaRow}>
+          <Text style={[styles.storeCategory, { color: colors.textSecondary }]} numberOfLines={1}>
+            {store.category}
+          </Text>
+          <View style={styles.distanceBadge}>
+            <IconSymbol name="location" size={12} color={colors.textTertiary} />
+            <Text style={[styles.distanceText, { color: colors.textTertiary }]}>
+              {store.distance}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.deliveryRow}>
+          <View style={styles.deliveryInfo}>
+            <IconSymbol name="clock" size={14} color={colors.primary} />
+            <Text style={[styles.deliveryText, { color: colors.primary }]}>
+              {store.deliveryTime}
+            </Text>
+          </View>
+          <View style={styles.deliveryFeeContainer}>
+            <Text style={[styles.deliveryFee, { color: store.deliveryFee === 0 ? colors.success : colors.textSecondary }]}>
+              {store.deliveryFee === 0 ? 'Free delivery' : `₹${store.deliveryFee} delivery`}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Action Button */}
+      <View style={styles.actionContainer}>
+        <TouchableOpacity 
+          style={[styles.quickActionButton, { backgroundColor: colors.primary + '10' }]}
+          onPress={() => router.push(`/store/${store.id}`)}
+        >
+          <IconSymbol name="arrow.right" size={18} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.locationContainer}>
+            <IconSymbol name="location" size={20} color={colors.textInverse} />
+            <View>
+              <Text style={[styles.locationLabel, { color: colors.textInverse + 'CC' }]}>
+                Deliver to
+              </Text>
+              <Text style={[styles.locationText, { color: colors.textInverse }]}>
+                Home - 560034
+              </Text>
+            </View>
+          </View>
+          <View style={styles.headerActions}>
+            <ThemeToggle />
+            <TouchableOpacity style={styles.profileButton}>
+              <IconSymbol name="person.circle" size={28} color={colors.textInverse} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {/* Search Bar */}
+        <TouchableOpacity 
+          style={[styles.searchBar, { backgroundColor: colors.background }]}
+          activeOpacity={0.8}
+        >
+          <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
+          <Text style={[styles.searchPlaceholder, { color: colors.textSecondary }]}>
+            Search for products, stores...
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Nearby Stores */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Nearby Stores
+            </Text>
+            <TouchableOpacity>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>
+                See All
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          <FlatList
+            data={mockStores}
+            renderItem={renderStoreCard}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            contentContainerStyle={styles.storesList}
+          />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+  },
+  header: {
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  locationLabel: {
+    ...TextStyles.caption,
+    marginLeft: Spacing.sm,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  locationText: {
+    ...TextStyles.body,
+    fontWeight: Typography.fontWeight.semibold,
+    marginLeft: Spacing.sm,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  profileButton: {
+    padding: Spacing.xs,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: Layout.searchBar.height,
+    borderRadius: Layout.searchBar.borderRadius,
+    paddingHorizontal: Layout.searchBar.paddingHorizontal,
+    ...Layout.shadow.sm,
+  },
+  searchPlaceholder: {
+    ...TextStyles.body,
+    marginLeft: Spacing.md,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: Spacing.xxxl + 60, // Account for tab bar
+  },
+  section: {
+    marginTop: Spacing.xl,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  sectionTitle: {
+    ...TextStyles.h5,
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  seeAll: {
+    ...TextStyles.body,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  storesList: {
+    paddingHorizontal: Spacing.lg,
+  },
+  storeCard: {
+    flexDirection: 'row',
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+    borderRadius: Layout.borderRadius.xl,
+    borderWidth: 1,
+    alignItems: 'flex-start',
+  },
+  storeImageContainer: {
+    position: 'relative',
+    marginRight: Spacing.md,
+  },
+  storeLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: Layout.borderRadius.lg,
+  },
+  storeLogoClosed: {
+    opacity: 0.6,
+  },
+  closedOverlay: {
     position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: Layout.borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closedOverlayText: {
+    ...TextStyles.caption,
+    fontWeight: Typography.fontWeight.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  offerBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Layout.borderRadius.sm,
+    maxWidth: 100,
+  },
+  offerText: {
+    ...TextStyles.caption,
+    fontWeight: Typography.fontWeight.bold,
+    fontSize: 10,
+    textAlign: 'center',
+  },
+  storeInfo: {
+    flex: 1,
+    paddingTop: Spacing.xs,
+  },
+  storeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.sm,
+  },
+  storeName: {
+    ...TextStyles.h6,
+    fontWeight: Typography.fontWeight.bold,
+    flex: 1,
+    marginRight: Spacing.sm,
+    lineHeight: 20,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Layout.borderRadius.lg,
+  },
+  rating: {
+    ...TextStyles.caption,
+    fontWeight: Typography.fontWeight.bold,
+    marginLeft: Spacing.xs,
+    fontSize: 12,
+  },
+  storeMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  storeCategory: {
+    ...TextStyles.bodySmall,
+    fontWeight: Typography.fontWeight.medium,
+    flex: 1,
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  distanceText: {
+    ...TextStyles.caption,
+    marginLeft: Spacing.xs,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  deliveryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  deliveryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  deliveryText: {
+    ...TextStyles.bodySmall,
+    marginLeft: Spacing.sm,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  deliveryFeeContainer: {
+    alignItems: 'flex-end',
+  },
+  deliveryFee: {
+    ...TextStyles.bodySmall,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  actionContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: Spacing.sm,
+  },
+  quickActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
