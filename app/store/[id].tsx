@@ -314,15 +314,21 @@ export default function StoreDetailScreen() {
             </Text>
           </Text>
           
-          <FlatList
-            data={filteredProducts}
-            renderItem={renderProduct}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            scrollEnabled={false}
-            contentContainerStyle={styles.productsGrid}
-            columnWrapperStyle={styles.productRow}
-          />
+          <View style={styles.productsGrid}>
+            {filteredProducts.map((product, index) => {
+              // Create rows of 2 products each
+              if (index % 2 === 0) {
+                const nextProduct = filteredProducts[index + 1];
+                return (
+                  <View key={`row-${index}`} style={styles.productRow}>
+                    {renderProduct({ item: product })}
+                    {nextProduct && renderProduct({ item: nextProduct })}
+                  </View>
+                );
+              }
+              return null; // Skip odd indices as they're handled by the previous even index
+            })}
+          </View>
         </View>
       </ScrollView>
 
@@ -520,10 +526,13 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.regular,
   },
   productsGrid: {
-    gap: Spacing.md,
+    flex: 1,
+    paddingTop: Spacing.md,
   },
   productRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: Spacing.md,
   },
   productCard: {
     width: '48%',
