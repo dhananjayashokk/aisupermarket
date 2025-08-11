@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, Platform } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, Platform, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -10,6 +10,7 @@ import { useCart } from '@/contexts/CartContext';
 import { mockProducts } from '@/data/mockProducts';
 import { mockStores } from '@/data/mockStores';
 import { useState } from 'react';
+import { useRefresh, simulateDataFetch } from '@/hooks/useRefresh';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -17,6 +18,11 @@ export default function ProductDetailScreen() {
   const colors = Colors[colorScheme];
   const { state: cartState, addItem, updateQuantity, getItemQuantity } = useCart();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  // Pull-to-refresh functionality
+  const { refreshing, onRefresh } = useRefresh(async () => {
+    await simulateDataFetch(900); // Simulate loading product details
+  });
 
   // Find the product
   const product = mockProducts.find(p => p.id === id);
@@ -104,6 +110,14 @@ export default function ProductDetailScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* Product Images */}
         <View style={styles.imageContainer}>

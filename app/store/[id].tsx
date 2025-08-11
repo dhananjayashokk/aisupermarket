@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, FlatList, Platform } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, FlatList, Platform, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -10,6 +10,7 @@ import { useCart } from '@/contexts/CartContext';
 import { mockStores } from '@/data/mockStores';
 import { mockProducts, categories } from '@/data/mockProducts';
 import { useState } from 'react';
+import { useRefresh, simulateDataFetch } from '@/hooks/useRefresh';
 
 export default function StoreDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -17,6 +18,11 @@ export default function StoreDetailScreen() {
   const colors = Colors[colorScheme];
   const { state: cartState, addItem, updateQuantity, getItemQuantity } = useCart();
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Pull-to-refresh functionality
+  const { refreshing, onRefresh } = useRefresh(async () => {
+    await simulateDataFetch(1100); // Simulate loading store and product data
+  });
 
   // Find the store
   const store = mockStores.find(s => s.id === id);
@@ -210,7 +216,17 @@ export default function StoreDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
         {/* Store Banner */}
         <View style={styles.bannerContainer}>
           <Image 

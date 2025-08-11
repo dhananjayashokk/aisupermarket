@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, FlatList, Platform } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, FlatList, Platform, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
@@ -8,10 +8,16 @@ import { useAppColorScheme } from '@/contexts/ThemeContext';
 import { mockStores, Store } from '@/data/mockStores';
 import { router } from 'expo-router';
 import ThemeToggle from '@/components/themed/ThemeToggle';
+import { useRefresh, simulateDataFetch } from '@/hooks/useRefresh';
 
 export default function HomeScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme];
+
+  // Pull-to-refresh functionality
+  const { refreshing, onRefresh } = useRefresh(async () => {
+    await simulateDataFetch(1200); // Simulate loading stores/data
+  });
 
   const renderStoreCard = ({ item: store }: { item: Store }) => (
     <TouchableOpacity
@@ -157,6 +163,14 @@ export default function HomeScreen() {
         contentContainerStyle={styles.mainScrollContent}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* Section Header */}
         <View style={styles.sectionHeader}>

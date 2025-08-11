@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, Switch, Alert } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, Switch, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
@@ -6,11 +6,17 @@ import { Layout, Spacing } from '@/constants/Layout';
 import { Typography, TextStyles } from '@/constants/Typography';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useState } from 'react';
+import { useRefresh, simulateDataFetch } from '@/hooks/useRefresh';
 
 export default function ProfileScreen() {
   const { colorScheme, themePreference, setThemePreference, toggleTheme } = useTheme();
   const colors = Colors[colorScheme];
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  // Pull-to-refresh functionality
+  const { refreshing, onRefresh } = useRefresh(async () => {
+    await simulateDataFetch(1000); // Simulate loading profile data
+  });
 
   const handleThemeToggle = () => {
     toggleTheme();
@@ -139,6 +145,14 @@ export default function ProfileScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* Profile Info */}
         <View style={[styles.profileCard, { backgroundColor: colors.surface }]}>
