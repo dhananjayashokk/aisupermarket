@@ -116,101 +116,76 @@ export default function HomeScreen() {
 
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <SafeAreaView style={[styles.headerContainer, { backgroundColor: colors.primary }]}>
-        <View style={[styles.header, { backgroundColor: colors.primary }]}>
-          <View style={styles.headerTop}>
-            <View style={styles.locationContainer}>
-              <IconSymbol name="location" size={20} color={colors.textInverse} />
-              <View>
-                <Text style={[styles.locationLabel, { color: colors.textInverse + 'CC' }]}>
-                  Deliver to
-                </Text>
-                <Text style={[styles.locationText, { color: colors.textInverse }]}>
-                  Home - 560034
-                </Text>
-              </View>
-            </View>
-            <View style={styles.headerActions}>
-              <ThemeToggle />
-              <TouchableOpacity style={styles.profileButton}>
-                <IconSymbol name="person.circle" size={28} color={colors.textInverse} />
-              </TouchableOpacity>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.locationContainer}>
+            <IconSymbol name="location" size={20} color={colors.textInverse} />
+            <View>
+              <Text style={[styles.locationLabel, { color: colors.textInverse + 'CC' }]}>
+                Deliver to
+              </Text>
+              <Text style={[styles.locationText, { color: colors.textInverse }]}>
+                Home - 560034
+              </Text>
             </View>
           </View>
-          
-          {/* Search Bar */}
-          <TouchableOpacity 
-            style={[styles.searchBar, { backgroundColor: colors.background }]}
-            activeOpacity={0.8}
-          >
-            <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
-            <Text style={[styles.searchPlaceholder, { color: colors.textSecondary }]}>
-              Search for products, stores...
+          <View style={styles.headerActions}>
+            <ThemeToggle />
+            <TouchableOpacity style={styles.profileButton}>
+              <IconSymbol name="person.circle" size={28} color={colors.textInverse} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {/* Search Bar */}
+        <TouchableOpacity 
+          style={[styles.searchBar, { backgroundColor: colors.background }]}
+          activeOpacity={0.8}
+        >
+          <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
+          <Text style={[styles.searchPlaceholder, { color: colors.textSecondary }]}>
+            Search for products, stores...
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Main Content */}
+      <ScrollView
+        style={styles.mainScrollView}
+        contentContainerStyle={styles.mainScrollContent}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+      >
+        {/* Section Header */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Nearby Stores
+          </Text>
+          <TouchableOpacity>
+            <Text style={[styles.seeAll, { color: colors.primary }]}>
+              See All
             </Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
-
-      {/* Main Content */}
-      <FlatList
-        data={mockStores}
-        renderItem={renderStoreCard}
-        keyExtractor={(item) => item.id}
-        style={styles.mainList}
-        contentContainerStyle={styles.mainListContent}
-        showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        {...Platform.select({
-          web: {
-            onTouchStart: undefined, // Allow native touch handling on web
-            nestedScrollEnabled: false,
-          },
-        })}
-        ListHeaderComponent={
-          <View>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Nearby Stores
-              </Text>
-              <TouchableOpacity>
-                <Text style={[styles.seeAll, { color: colors.primary }]}>
-                  See All
-                </Text>
-              </TouchableOpacity>
+        
+        {/* Store Cards */}
+        <View style={styles.storesContainer}>
+          {mockStores.map((store) => (
+            <View key={store.id}>
+              {renderStoreCard({ item: store })}
             </View>
-            {Platform.OS === 'web' && <View style={styles.scrollZone} />}
-          </View>
-        }
-        ListHeaderComponentStyle={styles.listHeader}
-        ItemSeparatorComponent={() => (
-          Platform.OS === 'web' ? <View style={styles.scrollZone} /> : null
-        )}
-      />
-    </View>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...Platform.select({
-      web: {
-        minHeight: '100vh',
-        maxHeight: '100vh',
-        overflow: 'hidden',
-      },
-    }),
-  },
-  headerContainer: {
-    zIndex: 10,
-    ...Platform.select({
-      web: {
-        position: 'relative',
-        flexShrink: 0,
-      },
-    }),
   },
   header: {
     paddingTop: Spacing.md,
@@ -256,37 +231,20 @@ const styles = StyleSheet.create({
     ...TextStyles.body,
     marginLeft: Spacing.md,
   },
-  mainList: {
+  mainScrollView: {
     flex: 1,
-    ...Platform.select({
-      web: {
-        minHeight: '100vh',
-        overflowY: 'auto',
-        WebkitOverflowScrolling: 'touch',
-      },
-    }),
   },
-  mainListContent: {
+  mainScrollContent: {
     flexGrow: 1,
     paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xl,
     paddingBottom: Platform.select({
       web: Spacing.xxxl + 120, // More padding for web mobile to clear tab bar
       default: Spacing.xxxl + 90, // More padding for native mobile
     }),
-    ...Platform.select({
-      web: {
-        minHeight: 'calc(100vh - 140px)', // Subtract header height
-        paddingTop: Spacing.md, // Add some top padding for easier scroll start
-      },
-    }),
   },
-  listHeader: {
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.md,
-  },
-  scrollZone: {
-    height: Spacing.sm,
-    width: '100%',
+  storesContainer: {
+    flex: 1,
   },
   section: {
     marginTop: Spacing.xl,
@@ -295,7 +253,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
+    paddingHorizontal: 0, // Remove extra padding since we have container padding
   },
   sectionTitle: {
     ...TextStyles.h5,

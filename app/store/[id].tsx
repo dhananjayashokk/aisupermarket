@@ -217,12 +217,24 @@ export default function StoreDetailScreen() {
             source={{ uri: store.banner }} 
             style={styles.bannerImage}
             resizeMode="cover"
+            {...Platform.select({
+              web: {
+                draggable: false,
+                onDragStart: (e: any) => e.preventDefault(),
+              },
+            })}
           />
           <View style={[styles.bannerOverlay, { backgroundColor: colors.overlay }]}>
             <View style={styles.storeDetails}>
               <Image 
                 source={{ uri: store.logo }} 
                 style={styles.storeLogo}
+                {...Platform.select({
+                  web: {
+                    draggable: false,
+                    onDragStart: (e: any) => e.preventDefault(),
+                  },
+                })}
               />
               <View style={styles.storeInfo}>
                 <Text style={[styles.storeName, { color: colors.textInverse }]}>
@@ -371,6 +383,17 @@ const styles = StyleSheet.create({
   bannerImage: {
     width: '100%',
     height: '100%',
+    ...Platform.select({
+      web: {
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
+        WebkitUserDrag: 'none',
+        WebkitTouchCallout: 'none',
+        pointerEvents: 'none',
+      },
+    }),
   },
   bannerOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -388,6 +411,17 @@ const styles = StyleSheet.create({
     marginRight: Spacing.md,
     borderWidth: 2,
     borderColor: 'white',
+    ...Platform.select({
+      web: {
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
+        WebkitUserDrag: 'none',
+        WebkitTouchCallout: 'none',
+        pointerEvents: 'none',
+      },
+    }),
   },
   storeInfo: {
     flex: 1,
