@@ -19,6 +19,7 @@ export const Spacing = {
 export const Layout = {
   // Screen Layout
   screen: {
+    width: 375, // Default screen width for calculations
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.xxl,
