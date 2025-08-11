@@ -22,6 +22,8 @@ export default function HomeScreen() {
       }]}
       activeOpacity={0.8}
       onPress={() => router.push(`/store/${store.id}`)}
+      delayPressIn={Platform.OS === 'web' ? 100 : 0}
+      delayPressOut={Platform.OS === 'web' ? 100 : 0}
     >
       {/* Store Image with Status Overlay */}
       <View style={styles.storeImageContainer}>
@@ -146,19 +148,32 @@ export default function HomeScreen() {
         style={styles.mainList}
         contentContainerStyle={styles.mainListContent}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        {...Platform.select({
+          web: {
+            onTouchStart: undefined, // Allow native touch handling on web
+            nestedScrollEnabled: false,
+          },
+        })}
         ListHeaderComponent={
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Nearby Stores
-            </Text>
-            <TouchableOpacity>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>
-                See All
+          <View>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Nearby Stores
               </Text>
-            </TouchableOpacity>
+              <TouchableOpacity>
+                <Text style={[styles.seeAll, { color: colors.primary }]}>
+                  See All
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {Platform.OS === 'web' && <View style={styles.scrollZone} />}
           </View>
         }
         ListHeaderComponentStyle={styles.listHeader}
+        ItemSeparatorComponent={() => (
+          Platform.OS === 'web' ? <View style={styles.scrollZone} /> : null
+        )}
       />
     </View>
   );
@@ -248,12 +263,17 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         minHeight: 'calc(100vh - 140px)', // Subtract header height
+        paddingTop: Spacing.md, // Add some top padding for easier scroll start
       },
     }),
   },
   listHeader: {
     marginTop: Spacing.xl,
     marginBottom: Spacing.md,
+  },
+  scrollZone: {
+    height: Spacing.sm,
+    width: '100%',
   },
   section: {
     marginTop: Spacing.xl,
@@ -276,9 +296,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: Spacing.lg,
     marginBottom: Spacing.lg,
+    marginHorizontal: Platform.select({
+      web: Spacing.xs, // Add horizontal margin for web to create scroll zones
+      default: 0,
+    }),
     borderRadius: Layout.borderRadius.xl,
     borderWidth: 1,
     alignItems: 'flex-start',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        // Add CSS to prevent touch-action conflicts
+        touchAction: 'manipulation',
+      },
+    }),
   },
   storeImageContainer: {
     position: 'relative',
