@@ -22,8 +22,15 @@ export default function HomeScreen() {
       }]}
       activeOpacity={0.8}
       onPress={() => router.push(`/store/${store.id}`)}
-      delayPressIn={Platform.OS === 'web' ? 100 : 0}
-      delayPressOut={Platform.OS === 'web' ? 100 : 0}
+      delayPressIn={Platform.OS === 'web' ? 150 : 0}
+      delayPressOut={Platform.OS === 'web' ? 150 : 0}
+      {...Platform.select({
+        web: {
+          onTouchStart: undefined,
+          onTouchMove: undefined,
+          onTouchEnd: undefined,
+        },
+      })}
     >
       {/* Store Image with Status Overlay */}
       <View style={styles.storeImageContainer}>
@@ -31,6 +38,12 @@ export default function HomeScreen() {
           source={{ uri: store.logo }} 
           style={[styles.storeLogo, !store.isOpen && styles.storeLogoClosed]}
           resizeMode="cover"
+          {...Platform.select({
+            web: {
+              draggable: false,
+              onDragStart: (e: any) => e.preventDefault(),
+            },
+          })}
         />
         {!store.isOpen && (
           <View style={[styles.closedOverlay, { backgroundColor: colors.error + '80' }]}>
@@ -257,8 +270,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: Spacing.lg,
     paddingBottom: Platform.select({
-      web: Spacing.xxxl + 80, // Extra padding for web mobile
-      default: Spacing.xxxl + 60,
+      web: Spacing.xxxl + 120, // More padding for web mobile to clear tab bar
+      default: Spacing.xxxl + 90, // More padding for native mobile
     }),
     ...Platform.select({
       web: {
@@ -306,8 +319,11 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        // Add CSS to prevent touch-action conflicts
         touchAction: 'manipulation',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitTapHighlightColor: 'transparent',
       },
     }),
   },
@@ -319,6 +335,17 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: Layout.borderRadius.lg,
+    ...Platform.select({
+      web: {
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
+        WebkitUserDrag: 'none',
+        WebkitTouchCallout: 'none',
+        pointerEvents: 'none',
+      },
+    }),
   },
   storeLogoClosed: {
     opacity: 0.6,

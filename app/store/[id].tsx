@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, FlatList } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, FlatList, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -91,8 +91,26 @@ export default function StoreDetailScreen() {
         style={[styles.productCard, { backgroundColor: colors.surface }]}
         activeOpacity={0.8}
         onPress={() => router.push(`/product/${item.id}`)}
+        delayPressIn={Platform.OS === 'web' ? 150 : 0}
+        delayPressOut={Platform.OS === 'web' ? 150 : 0}
+        {...Platform.select({
+          web: {
+            onTouchStart: undefined,
+            onTouchMove: undefined,
+            onTouchEnd: undefined,
+          },
+        })}
       >
-        <Image source={{ uri: item.image }} style={styles.productImage} />
+        <Image 
+          source={{ uri: item.image }} 
+          style={styles.productImage}
+          {...Platform.select({
+            web: {
+              draggable: false,
+              onDragStart: (e: any) => e.preventDefault(),
+            },
+          })}
+        />
         
         {item.discount && (
           <View style={[styles.discountBadge, { backgroundColor: colors.discount }]}>
@@ -479,12 +497,33 @@ const styles = StyleSheet.create({
     padding: Layout.productCard.padding,
     marginBottom: Spacing.md,
     ...Layout.shadow.sm,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        touchAction: 'manipulation',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitTapHighlightColor: 'transparent',
+      },
+    }),
   },
   productImage: {
     width: '100%',
     height: Layout.productCard.imageHeight,
     borderRadius: Layout.borderRadius.sm,
     marginBottom: Spacing.sm,
+    ...Platform.select({
+      web: {
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
+        WebkitUserDrag: 'none',
+        WebkitTouchCallout: 'none',
+        pointerEvents: 'none',
+      },
+    }),
   },
   discountBadge: {
     position: 'absolute',
