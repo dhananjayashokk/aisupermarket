@@ -1,9 +1,10 @@
-import { StyleSheet, View, Text, Alert, TextInput } from 'react-native';
+import { StyleSheet, View, Text, Alert, TextInput, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { ThemedButton, ThemedCard } from '@/components/themed';
 import { useAppColorScheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Layout } from '@/constants/Layout';
 import { TextStyles, Typography } from '@/constants/Typography';
@@ -12,11 +13,25 @@ import { useState, useEffect, useRef } from 'react';
 export default function OTPScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme];
+  const { state, verifyOTP, sendOTP, clearPhoneNumber, getSampleCustomers, loginWithSampleCustomer } = useAuth();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const [sampleCustomers, setSampleCustomers] = useState<any[]>([]);
+  const [showSamples, setShowSamples] = useState(true);
   const inputRefs = useRef<TextInput[]>([]);
+  const isLoading = state.isLoading;
+
+  // Fetch sample customers on component mount
+  useEffect(() => {
+    const fetchSamples = async () => {
+      const result = await getSampleCustomers();
+      if (result.success && result.customers) {
+        setSampleCustomers(result.customers);
+      }
+    };
+    fetchSamples();
+  }, []);
 
   // Timer for resend OTP
   useEffect(() => {
@@ -59,32 +74,60 @@ export default function OTPScreen() {
       return;
     }
 
-    setIsLoading(true);
+    const result = await verifyOTP(otpString);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      if (otpString === '123456') { // Mock OTP for demo
-        Alert.alert('Success', 'Login successful!', [
-          { text: 'OK', onPress: () => router.replace('/(tabs)') }
-        ]);
-      } else {
-        Alert.alert('Error', 'Invalid OTP. Please try again.');
-      }
-    }, 1500);
+    if (result.success) {
+      Alert.alert('Success', 'Login successful!', [
+        { text: 'OK', onPress: () => router.replace('/(tabs)') }
+      ]);
+    } else {
+      Alert.alert('Error', result.message);
+    }
   };
 
-  const handleResendOTP = () => {
-    setTimeLeft(60);
-    setCanResend(false);
-    setOtp(['', '', '', '', '', '']);
-    Alert.alert('OTP Sent', 'A new verification code has been sent to your phone');
+  const handleResendOTP = async () => {
+    if (!state.phoneNumber) {
+      Alert.alert('Error', 'Phone number not found. Please go back and try again.');
+      return;
+    }
+
+    const result = await sendOTP(state.phoneNumber);
+    
+    if (result.success) {
+      setTimeLeft(60);
+      setCanResend(false);
+      setOtp(['', '', '', '', '', '']);
+      Alert.alert('OTP Sent', 'A new verification code has been sent to your phone');
+    } else {
+      Alert.alert('Error', result.message);
+    }
+  };
+
+  const handleSampleCustomerLogin = async (customer: any) => {
+    const result = await loginWithSampleCustomer(customer);
+    
+    if (result.success) {
+      Alert.alert('Success', `Welcome back, ${customer.name}!`, [
+        { text: 'OK', onPress: () => router.replace('/(tabs)') }
+      ]);
+    } else {
+      Alert.alert('Error', result.message);
+    }
   };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getCustomerTypeColor = (type: string) => {
+    switch (type) {
+      case 'vip': return '#FFD700';
+      case 'premium': return '#FF6B6B';
+      case 'regular': return '#4ECDC4';
+      default: return colors.primary;
+    }
   };
 
   return (
@@ -105,6 +148,8 @@ export default function OTPScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
+      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+
       <View style={styles.content}>
         {/* Illustration */}
         <View style={[styles.illustrationContainer, { backgroundColor: colors.primary + '10' }]}>
@@ -120,7 +165,7 @@ export default function OTPScreen() {
             We've sent a 6-digit code to
           </Text>
           <Text style={[styles.phoneNumber, { color: colors.text }]}>
-            +91 98765 43210
+            {state.phoneNumber ? `+91 ${state.phoneNumber}` : '+91 XXXXXXXXXX'}
           </Text>
         </View>
 
@@ -187,13 +232,71 @@ export default function OTPScreen() {
         <Text style={[styles.helpText, { color: colors.textTertiary }]}>
           Enter "123456" for demo purposes
         </Text>
+
+        {/* Sample Customers Section */}
+        {showSamples && sampleCustomers.length > 0 && (
+          <View style={styles.sampleSection}>
+            <View style={styles.sampleHeader}>
+              <Text style={[styles.sampleTitle, { color: colors.text }]}>
+                Quick Login (Demo)
+              </Text>
+              <TouchableOpacity onPress={() => setShowSamples(false)}>
+                <IconSymbol name="xmark" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={[styles.sampleSubtitle, { color: colors.textSecondary }]}>
+              Tap any customer below to login instantly
+            </Text>
+
+            <View style={styles.customersGrid}>
+              {sampleCustomers.map((customer) => (
+                <TouchableOpacity
+                  key={customer.id}
+                  style={[styles.customerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={() => handleSampleCustomerLogin(customer)}
+                  disabled={isLoading}
+                >
+                  <View style={[styles.customerAvatar, { backgroundColor: getCustomerTypeColor(customer.customerType) + '20' }]}>
+                    <Text style={[styles.customerAvatarText, { color: getCustomerTypeColor(customer.customerType) }]}>
+                      {customer.avatar}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.customerInfo}>
+                    <Text style={[styles.customerName, { color: colors.text }]}>
+                      {customer.name}
+                    </Text>
+                    <Text style={[styles.customerPhone, { color: colors.textSecondary }]}>
+                      {customer.displayPhone}
+                    </Text>
+                    <View style={styles.customerMeta}>
+                      <View style={[styles.customerTypeBadge, { backgroundColor: getCustomerTypeColor(customer.customerType) + '20' }]}>
+                        <Text style={[styles.customerTypeText, { color: getCustomerTypeColor(customer.customerType) }]}>
+                          {customer.customerType.toUpperCase()}
+                        </Text>
+                      </View>
+                      <Text style={[styles.customerPoints, { color: colors.primary }]}>
+                        {customer.loyaltyPoints} pts
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollContainer: {
     flex: 1,
   },
   header: {
@@ -280,5 +383,79 @@ const styles = StyleSheet.create({
     ...TextStyles.caption,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  // Sample customers styles
+  sampleSection: {
+    marginTop: Spacing.xxl,
+    paddingTop: Spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  sampleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  sampleTitle: {
+    ...TextStyles.h4,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  sampleSubtitle: {
+    ...TextStyles.bodySmall,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+  },
+  customersGrid: {
+    gap: Spacing.md,
+  },
+  customerCard: {
+    flexDirection: 'row',
+    padding: Spacing.md,
+    borderRadius: Layout.borderRadius.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  customerAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  customerAvatarText: {
+    ...TextStyles.bodyLarge,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  customerInfo: {
+    flex: 1,
+  },
+  customerName: {
+    ...TextStyles.bodyLarge,
+    fontWeight: Typography.fontWeight.semibold,
+    marginBottom: Spacing.xs,
+  },
+  customerPhone: {
+    ...TextStyles.bodySmall,
+    marginBottom: Spacing.sm,
+  },
+  customerMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  customerTypeBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Layout.borderRadius.sm,
+  },
+  customerTypeText: {
+    ...TextStyles.caption,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  customerPoints: {
+    ...TextStyles.bodySmall,
+    fontWeight: Typography.fontWeight.semibold,
   },
 });

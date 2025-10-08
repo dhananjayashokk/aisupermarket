@@ -7,8 +7,6 @@ import { Layout, Spacing } from '@/constants/Layout';
 import { Typography, TextStyles } from '@/constants/Typography';
 import { useAppColorScheme } from '@/contexts/ThemeContext';
 import { useCart } from '@/contexts/CartContext';
-import { mockProducts, categories } from '@/data/mockProducts';
-import { mockStores } from '@/data/mockStores';
 import { useState } from 'react';
 
 export default function CategoryScreen() {
@@ -19,37 +17,16 @@ export default function CategoryScreen() {
   const [sortBy, setSortBy] = useState('popular');
   const [filterBy, setFilterBy] = useState('all');
 
-  // Find the category
-  const category = categories.find(c => c.id === id);
-  
-  if (!category) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.text }]}>Category not found</Text>
-      </SafeAreaView>
-    );
-  }
+  // Temporary category object - will be fetched from API
+  const category = {
+    id: id,
+    name: 'Category',
+    icon: '🛍️',
+  };
 
-  // Filter products by category
-  const categoryProducts = mockProducts.filter(p => p.category === category.name);
-
-  // Apply filters and sorting
+  // Empty products array - will be fetched from API
+  const categoryProducts: any[] = [];
   let filteredProducts = categoryProducts;
-
-  if (filterBy === 'discount') {
-    filteredProducts = categoryProducts.filter(p => p.discount && p.discount > 0);
-  } else if (filterBy === 'instock') {
-    filteredProducts = categoryProducts.filter(p => p.inStock);
-  }
-
-  // Sort products
-  if (sortBy === 'price_low') {
-    filteredProducts.sort((a, b) => a.price - b.price);
-  } else if (sortBy === 'price_high') {
-    filteredProducts.sort((a, b) => b.price - a.price);
-  } else if (sortBy === 'rating') {
-    filteredProducts.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  }
 
   const sortOptions = [
     { id: 'popular', label: 'Most Popular' },
@@ -65,9 +42,12 @@ export default function CategoryScreen() {
   ];
 
   const handleAddToCart = (product: any) => {
-    // Find the store for this product (for demo, we'll use the first store)
-    const store = mockStores[0];
-    
+    // Temporary store object
+    const store = {
+      id: '1',
+      name: 'Store',
+    };
+
     addItem({
       id: product.id,
       name: product.name,

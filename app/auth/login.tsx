@@ -1,33 +1,138 @@
-import { StyleSheet, ScrollView, View, Text, Alert } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, Alert, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { ThemedButton, ThemedInput, ThemedCard } from '@/components/themed';
+import { ThemedButton, ThemedInput, ThemedCard, Skeleton } from '@/components/themed';
 import { useAppColorScheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
 import { Spacing } from '@/constants/Layout';
 import { TextStyles } from '@/constants/Typography';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { ApiService } from '@/services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface Customer {
+  id: number;
+  name: string;
+  phone: string;
+  email?: string;
+  customerType: 'regular' | 'premium' | 'vip';
+  loyaltyPoints: number;
+}
 
 export default function LoginScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme];
+  const { authenticateWithMobile, state } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [showNameField, setShowNameField] = useState(false);
+  const [demoCustomers, setDemoCustomers] = useState<Customer[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [showDemoSection, setShowDemoSection] = useState(true);
+  const isLoading = state.isLoading;
 
-  const handleSendOTP = async () => {
+  // Fetch actual customers from database
+  useEffect(() => {
+    fetchDemoCustomers();
+  }, []);
+
+  const fetchDemoCustomers = async () => {
+    setLoadingCustomers(true);
+    try {
+      const response = await ApiService.customer.getDemoCustomers();
+      setDemoCustomers(response.customers || []);
+    } catch (error) {
+      console.error('Error fetching demo customers:', error);
+      // Fallback to empty array if fetch fails
+      setDemoCustomers([]);
+    } finally {
+      setLoadingCustomers(false);
+    }
+  };
+
+  const handleDemoLogin = async (customer: Customer) => {
+    try {
+      // Use the new mobile auth with the demo customer's phone number and name
+      const result = await authenticateWithMobile(customer.phone, customer.name);
+      
+      if (result.success) {
+        Alert.alert('Success', `Welcome, ${customer.name}!`);
+        router.replace('/(tabs)');
+      } else {
+        // Fallback to old demo login method if API fails
+        await AsyncStorage.setItem('user', JSON.stringify({
+          id: customer.id.toString(),
+          name: customer.name,
+          phone: customer.phone,
+          email: customer.email || '',
+          customerType: customer.customerType,
+          loyaltyPoints: customer.loyaltyPoints,
+          isDemo: true,
+        }));
+        
+        await AsyncStorage.setItem('accessToken', `demo_token_${customer.id}`);
+        router.replace('/(tabs)');
+      }
+    } catch (error) {
+      console.error('Error during demo login:', error);
+      Alert.alert('Error', 'Failed to login with demo customer');
+    }
+  };
+
+  const getCustomerTypeColor = (type: string) => {
+    switch (type) {
+      case 'vip': return '#FFD700';
+      case 'premium': return '#E6E6FA';
+      default: return colors.textSecondary;
+    }
+  };
+
+  const getCustomerTypeIcon = (type: string) => {
+    switch (type) {
+      case 'vip': return '👑';
+      case 'premium': return '⭐';
+      default: return '👤';
+    }
+  };
+
+  const handleMobileAuth = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
       Alert.alert('Error', 'Please enter a valid phone number');
       return;
     }
 
-    setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push('/auth/otp');
-    }, 1500);
+    // First try without name to see if customer exists
+    if (!showNameField) {
+      const result = await authenticateWithMobile(phoneNumber);
+      
+      if (result.success) {
+        Alert.alert('Success', result.message);
+        router.replace('/(tabs)');
+      } else if (result.message?.includes('new customer') || result.isNewCustomer) {
+        // Customer doesn't exist, show name field
+        setShowNameField(true);
+        Alert.alert('New Customer', 'Please provide your name to create an account');
+      } else {
+        Alert.alert('Error', result.message);
+      }
+    } else {
+      // Try with name for new customer
+      if (!customerName.trim()) {
+        Alert.alert('Error', 'Please enter your name');
+        return;
+      }
+      
+      const result = await authenticateWithMobile(phoneNumber, customerName.trim());
+      
+      if (result.success) {
+        Alert.alert('Success', result.message);
+        router.replace('/(tabs)');
+      } else {
+        Alert.alert('Error', result.message);
+      }
+    }
   };
 
   const handleSocialLogin = (provider: string) => {
@@ -41,23 +146,24 @@ export default function LoginScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+
         {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.logo, { color: colors.primary }]}>
-            AiSupermart
+            GoGenie
           </Text>
           <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-            Your neighborhood supermarket, delivered
+            Your Genie for Everyday Needs
           </Text>
         </View>
 
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={[styles.welcomeTitle, { color: colors.text }]}>
-            Welcome back!
+            Your Genie Awaits!
           </Text>
           <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
-            Enter your phone number to continue shopping
+            Enter your phone number and let the magic begin
           </Text>
         </View>
 
@@ -73,9 +179,20 @@ export default function LoginScreen() {
             leftIcon="phone"
           />
           
+          {showNameField && (
+            <ThemedInput
+              label="Full Name"
+              placeholder="Enter your full name"
+              value={customerName}
+              onChangeText={setCustomerName}
+              leftIcon="person"
+              style={{ marginTop: Spacing.md }}
+            />
+          )}
+          
           <ThemedButton
-            title={isLoading ? "Sending OTP..." : "Send OTP"}
-            onPress={handleSendOTP}
+            title={isLoading ? "Processing..." : showNameField ? "Create Account & Login" : "Login"}
+            onPress={handleMobileAuth}
             variant="primary"
             size="lg"
             fullWidth
@@ -83,8 +200,24 @@ export default function LoginScreen() {
             style={styles.otpButton}
           />
           
+          {showNameField && (
+            <ThemedButton
+              title="Back"
+              onPress={() => {
+                setShowNameField(false);
+                setCustomerName('');
+              }}
+              variant="ghost"
+              size="sm"
+              style={{ marginTop: Spacing.sm }}
+            />
+          )}
+          
           <Text style={[styles.otpInfo, { color: colors.textTertiary }]}>
-            We'll send you a verification code via SMS
+            {showNameField ? 
+              'We\'ll create your account and log you in instantly' :
+              'We\'ll log you in instantly or ask for your name if you\'re new'
+            }
           </Text>
         </ThemedCard>
 
@@ -105,7 +238,7 @@ export default function LoginScreen() {
             variant="outline"
             size="lg"
             leftIcon="globe"
-            style={[styles.socialButton, { flex: 1 }]}
+            style={StyleSheet.flatten([styles.socialButton, { flex: 1 }])}
           />
           
           <ThemedButton
@@ -114,13 +247,73 @@ export default function LoginScreen() {
             variant="outline"
             size="lg"
             leftIcon="apple.logo"
-            style={[styles.socialButton, { flex: 1 }]}
+            style={StyleSheet.flatten([styles.socialButton, { flex: 1 }])}
           />
+        </View>
+
+        {/* Demo Customers Section */}
+        <View style={{ padding: 16, backgroundColor: '#f0f0f0', margin: 16, borderRadius: 8 }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#000', marginBottom: 12 }}>
+            🎭 Demo Login - Actual Customers from Database
+          </Text>
+          <Text style={{ color: '#666', marginBottom: 16 }}>
+            Click to login as any customer:
+          </Text>
+
+          {loadingCustomers ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: '#666' }}>Loading customers...</Text>
+            </View>
+          ) : demoCustomers.length === 0 ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: '#666' }}>No customers available</Text>
+            </View>
+          ) : (
+            demoCustomers.map((customer) => (
+              <TouchableOpacity
+                key={customer.id}
+                style={{
+                  backgroundColor: '#fff',
+                  padding: 12,
+                  marginBottom: 8,
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: '#ddd'
+                }}
+                onPress={() => handleDemoLogin(customer)}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: '#000', flex: 1 }}>
+                    {customer.name}
+                  </Text>
+                  <Text style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: getCustomerTypeColor(customer.customerType),
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: 4
+                  }}>
+                    {getCustomerTypeIcon(customer.customerType)} {customer.customerType.toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 14, color: '#666' }}>
+                  {customer.phone.replace('+91', '+91 ')} • {customer.loyaltyPoints} points
+                </Text>
+                {customer.email && (
+                  <Text style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
+                    {customer.email}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         {/* Guest Option */}
         <ThemedButton
-          title="Continue as Guest"
+          title="Browse Without Magic"
           onPress={() => router.replace('/(tabs)')}
           variant="ghost"
           style={styles.guestButton}
@@ -224,5 +417,77 @@ const styles = StyleSheet.create({
     ...TextStyles.caption,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  
+  // Demo Customers Styles
+  demoSection: {
+    marginBottom: Spacing.xl,
+  },
+  demoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+  },
+  demoTitle: {
+    ...TextStyles.h4,
+    fontWeight: '600',
+  },
+  demoToggle: {
+    ...TextStyles.h4,
+    fontWeight: 'bold',
+  },
+  demoContent: {
+    paddingTop: Spacing.md,
+  },
+  demoSubtitle: {
+    ...TextStyles.bodySmall,
+    marginBottom: Spacing.lg,
+    textAlign: 'center',
+  },
+  demoLoadingContainer: {
+    gap: Spacing.sm,
+  },
+  demoSkeleton: {
+    borderRadius: 12,
+  },
+  demoCustomersContainer: {
+    gap: Spacing.sm,
+  },
+  demoCustomerCard: {
+    borderRadius: 12,
+    padding: Spacing.md,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  demoCustomerInfo: {
+    flex: 1,
+  },
+  demoCustomerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  demoCustomerName: {
+    ...TextStyles.bodyLarge,
+    fontWeight: '600',
+    flex: 1,
+  },
+  demoCustomerType: {
+    ...TextStyles.caption,
+    fontWeight: '700',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  demoCustomerPhone: {
+    ...TextStyles.bodySmall,
+    marginBottom: Spacing.xs,
+  },
+  demoCustomerPoints: {
+    ...TextStyles.bodySmall,
+    fontWeight: '600',
   },
 });

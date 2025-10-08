@@ -21,28 +21,28 @@ export default function OnboardingScreen() {
   const onboardingData = [
     {
       id: '1',
-      title: 'Shop Local',
-      subtitle: 'Discover nearby supermarkets and local stores',
-      description: 'Find the best deals from stores around you with just a few taps',
-      icon: '🏪',
+      title: 'Your Wish, Our Command',
+      subtitle: 'Discover everything you need, just like magic',
+      description: 'From groceries to daily essentials, your genie grants every wish with ease',
+      icon: '🧞‍♂️',
       image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&h=300&fit=crop&crop=center',
       color: colors.primary,
     },
     {
       id: '2',
-      title: 'Save Time',
-      subtitle: 'Get groceries delivered to your doorstep',
-      description: 'Skip the queues and enjoy fast delivery from your favorite stores',
+      title: 'Lightning Fast Service',
+      subtitle: 'Faster than you can rub the lamp',
+      description: 'Skip the queues and enjoy instant delivery from your favorite stores',
       icon: '⚡',
       image: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=300&h=300&fit=crop&crop=center',
       color: colors.secondary,
     },
     {
       id: '3',
-      title: 'Fresh Products',
-      subtitle: 'Quality guaranteed with every order',
-      description: 'Fresh vegetables, dairy, and daily essentials delivered with care',
-      icon: '🥬',
+      title: 'Quality Guaranteed',
+      subtitle: 'Premium products, magical experience',
+      description: 'Fresh vegetables, dairy, and daily essentials delivered with genie-level care',
+      icon: '✨',
       image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop&crop=center',
       color: colors.accent,
     },
@@ -93,7 +93,7 @@ export default function OnboardingScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.logo, { color: colors.primary }]}>
-          AiSupermart
+          GoGenie
         </Text>
         <ThemedButton
           title="Skip"

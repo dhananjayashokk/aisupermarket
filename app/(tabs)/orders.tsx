@@ -1,54 +1,106 @@
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { Layout, Spacing } from '@/constants/Layout';
 import { Typography, TextStyles } from '@/constants/Typography';
 import { useAppColorScheme } from '@/contexts/ThemeContext';
+import { ApiService } from '@/services/api';
+import { useState, useEffect } from 'react';
 
 export default function OrdersScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme];
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('all');
 
-  // Mock order data
-  const orders = [
-    {
-      id: '1',
-      orderNumber: 'ORD-2024-001',
-      storeName: 'Fresh Mart',
-      storeImage: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=80&h=80&fit=crop&crop=center',
-      date: '12 Aug, 10:30 AM',
-      status: 'Delivered',
-      statusColor: colors.success,
-      totalAmount: '₹ 567',
-      itemCount: 12,
-      items: ['Tomatoes', 'Onions', 'Rice', '...'],
-    },
-    {
-      id: '2',
-      orderNumber: 'ORD-2024-002',
-      storeName: 'Big Basket Express',
-      storeImage: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=80&h=80&fit=crop&crop=center',
-      date: '11 Aug, 2:15 PM',
-      status: 'On the way',
-      statusColor: colors.primary,
-      totalAmount: '₹ 1,234',
-      itemCount: 8,
-      items: ['Milk', 'Bread', 'Eggs', '...'],
-    },
-    {
-      id: '3',
-      orderNumber: 'ORD-2024-003',
-      storeName: 'Daily Needs Supermart',
-      storeImage: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=80&h=80&fit=crop&crop=center&sat=-100&hue=60',
-      date: '10 Aug, 6:45 PM',
-      status: 'Delivered',
-      statusColor: colors.success,
-      totalAmount: '₹ 892',
-      itemCount: 15,
-      items: ['Detergent', 'Shampoo', 'Soap', '...'],
-    },
-  ];
+  // Status color mapping
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'delivered': return colors.success;
+      case 'confirmed': return colors.primary;
+      case 'pending': return colors.warning;
+      case 'cancelled': return colors.error;
+      case 'out_for_delivery': return colors.info;
+      default: return colors.textSecondary;
+    }
+  };
+
+  // Fetch orders from API
+  const fetchOrders = async (page = 1, status = 'all', isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const response = await ApiService.orders.getCustomerOrders({
+        page,
+        limit: 10,
+        status
+      });
+
+      const transformedOrders = response.orders.map((order: any) => ({
+        id: order.id.toString(),
+        orderNumber: order.orderNumber,
+        storeName: order.store?.name || 'Store',
+        storeImage: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=80&h=80&fit=crop&crop=center',
+        date: new Date(order.timestamps.createdAt).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        }),
+        status: order.status.display.label,
+        statusColor: getStatusColor(order.status.current),
+        totalAmount: `₹${parseFloat(order.pricing.totalAmount).toFixed(0)}`,
+        itemCount: order.itemCount,
+        paymentStatus: order.payment.status,
+        paymentMethod: order.payment.method.displayName,
+        deliverySlot: order.delivery.slot ? new Date(order.delivery.slot).toLocaleDateString() : null,
+        specialInstructions: order.delivery.specialInstructions
+      }));
+
+      if (page === 1) {
+        setOrders(transformedOrders);
+      } else {
+        setOrders(prev => [...prev, ...transformedOrders]);
+      }
+      
+      setPagination(response.pagination);
+      setCurrentPage(page);
+
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load orders');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Load orders on component mount
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  // Handle refresh
+  const onRefresh = () => {
+    fetchOrders(1, statusFilter, true);
+  };
+
+  // Handle order card press
+  const handleOrderPress = (orderId: string) => {
+    router.push(`/order/${orderId}`);
+  };
 
   const getEmptyState = () => (
     <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
@@ -60,6 +112,7 @@ export default function OrdersScreen() {
       <TouchableOpacity 
         style={[styles.shopButton, { backgroundColor: colors.primary }]}
         activeOpacity={0.8}
+        onPress={() => router.push('/(tabs)')}
       >
         <Text style={[styles.shopButtonText, { color: colors.textInverse }]}>
           Start Shopping
@@ -68,13 +121,45 @@ export default function OrdersScreen() {
     </View>
   );
 
+  const getErrorState = () => (
+    <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+      <IconSymbol name="exclamationmark.triangle" size={64} color={colors.error} />
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>Failed to Load Orders</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+        {error}
+      </Text>
+      <TouchableOpacity 
+        style={[styles.shopButton, { backgroundColor: colors.primary }]}
+        activeOpacity={0.8}
+        onPress={() => fetchOrders()}
+      >
+        <Text style={[styles.shopButtonText, { color: colors.textInverse }]}>
+          Try Again
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const getLoadingState = () => (
+    <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>Loading Orders...</Text>
+    </View>
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.divider }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>My Orders</Text>
-        <TouchableOpacity>
-          <IconSymbol name="magnifyingglass" size={24} color={colors.text} />
+        <View>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>My Orders</Text>
+          {pagination && (
+            <Text style={[styles.orderCount, { color: colors.textSecondary }]}>
+              {pagination.total} total order{pagination.total !== 1 ? 's' : ''}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity onPress={onRefresh}>
+          <IconSymbol name="arrow.clockwise" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -83,8 +168,16 @@ export default function OrdersScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
       >
-        {orders.length === 0 ? getEmptyState() : (
+        {loading ? getLoadingState() : error ? getErrorState() : orders.length === 0 ? getEmptyState() : (
           <>
             {orders.map((order) => (
               <TouchableOpacity 
@@ -94,6 +187,7 @@ export default function OrdersScreen() {
                   ...Layout.shadow.md 
                 }]}
                 activeOpacity={0.7}
+                onPress={() => handleOrderPress(order.id)}
               >
                 <View style={styles.orderHeader}>
                   <Image 
@@ -109,9 +203,17 @@ export default function OrdersScreen() {
                     </Text>
                     <View style={styles.itemsPreview}>
                       <Text style={[styles.itemsText, { color: colors.textSecondary }]}>
-                        {order.itemCount} items: {order.items.join(', ')}
+                        {order.itemCount} item{order.itemCount !== 1 ? 's' : ''}
+                      </Text>
+                      <Text style={[styles.paymentMethod, { color: colors.textTertiary }]}>
+                        • {order.paymentMethod}
                       </Text>
                     </View>
+                    {order.deliverySlot && (
+                      <Text style={[styles.deliverySlot, { color: colors.textTertiary }]}>
+                        Delivery: {order.deliverySlot}
+                      </Text>
+                    )}
                   </View>
                 </View>
                 
@@ -158,6 +260,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...TextStyles.h4,
   },
+  orderCount: {
+    ...TextStyles.caption,
+    marginTop: Spacing.xs,
+  },
   scrollView: {
     flex: 1,
   },
@@ -197,6 +303,14 @@ const styles = StyleSheet.create({
   itemsText: {
     ...TextStyles.caption,
     flex: 1,
+  },
+  paymentMethod: {
+    ...TextStyles.caption,
+    marginLeft: Spacing.sm,
+  },
+  deliverySlot: {
+    ...TextStyles.caption,
+    marginTop: Spacing.xs,
   },
   orderFooter: {
     flexDirection: 'row',

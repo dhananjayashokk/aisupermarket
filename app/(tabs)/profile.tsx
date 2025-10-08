@@ -5,13 +5,17 @@ import { Colors } from '@/constants/Colors';
 import { Layout, Spacing } from '@/constants/Layout';
 import { Typography, TextStyles } from '@/constants/Typography';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { useRefresh, simulateDataFetch } from '@/hooks/useRefresh';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function ProfileScreen() {
   const { colorScheme, themePreference, setThemePreference, toggleTheme } = useTheme();
+  const { state, logout } = useAuth();
   const colors = Colors[colorScheme];
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Pull-to-refresh functionality
   const { refreshing, onRefresh } = useRefresh(async () => {
@@ -29,6 +33,28 @@ export default function ProfileScreen() {
       case 'system': return 'System Default';
       default: return 'System Default';
     }
+  };
+
+  const handleLogout = () => {
+    console.log('🚪 Logout button pressed!');
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
+    console.log('🚪 User confirmed logout, calling logout function...');
+    setShowLogoutModal(false);
+    try {
+      await logout();
+      console.log('🚪 Logout completed successfully');
+    } catch (error) {
+      console.error('🚪 Logout error:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    }
+  };
+
+  const cancelLogout = () => {
+    console.log('🚪 User cancelled logout');
+    setShowLogoutModal(false);
   };
 
   const profileSections = [
@@ -78,7 +104,7 @@ export default function ProfileScreen() {
       title: 'More',
       items: [
         { icon: 'info.circle', label: 'About Us', arrow: true },
-        { icon: 'arrow.right.square', label: 'Sign Out', arrow: true, danger: true },
+        { icon: 'arrow.right.square', label: 'Sign Out', arrow: true, danger: true, onPress: handleLogout },
       ],
     },
   ];
@@ -91,7 +117,15 @@ export default function ProfileScreen() {
         !isLast && { borderBottomColor: colors.divider, borderBottomWidth: 1 },
       ]}
       activeOpacity={item.toggle ? 1 : 0.7}
-      onPress={item.onPress}
+      onPress={() => {
+        console.log(`💆 Clicked on: ${item.label}`);
+        if (item.onPress) {
+          console.log(`💆 Calling onPress for: ${item.label}`);
+          item.onPress();
+        } else {
+          console.log(`💆 No onPress found for: ${item.label}`);
+        }
+      }}
     >
       <View style={styles.settingLeft}>
         <IconSymbol 
@@ -161,13 +195,13 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.profileInfo}>
             <Text style={[styles.userName, { color: colors.text }]}>
-              Dhananjay Kumar
+              {state.user?.name || 'User'}
             </Text>
             <Text style={[styles.userPhone, { color: colors.textSecondary }]}>
-              +91 98765 43210
+              +91 {state.user?.phoneNumber || 'XXXXXXXXXX'}
             </Text>
             <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
-              dhananjay@example.com
+              {state.user?.email || 'No email provided'}
             </Text>
           </View>
           <TouchableOpacity 
@@ -218,10 +252,22 @@ export default function ProfileScreen() {
         {/* App Version */}
         <View style={styles.versionContainer}>
           <Text style={[styles.versionText, { color: colors.textTertiary }]}>
-            AiSupermart v1.0.0
+            GoGenie v1.0.0
           </Text>
         </View>
       </ScrollView>
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmModal
+        visible={showLogoutModal}
+        title="Sign Out"
+        message="Are you sure you want to sign out of your account?"
+        confirmText="Sign Out"
+        cancelText="Cancel"
+        onConfirm={confirmLogout}
+        onCancel={cancelLogout}
+        danger
+      />
     </SafeAreaView>
   );
 }

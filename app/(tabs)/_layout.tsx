@@ -21,6 +21,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.tabIconDefault,
         headerShown: false,
+        headerTitle: '',
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
         tabBarStyle: Platform.select({
@@ -49,6 +50,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
+          headerShown: false,
+          headerTitle: '',
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol 
               size={Layout.tabBar.iconSize} 

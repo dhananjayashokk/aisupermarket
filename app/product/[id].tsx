@@ -7,9 +7,8 @@ import { Layout, Spacing } from '@/constants/Layout';
 import { Typography, TextStyles } from '@/constants/Typography';
 import { useAppColorScheme } from '@/contexts/ThemeContext';
 import { useCart } from '@/contexts/CartContext';
-import { mockProducts } from '@/data/mockProducts';
-import { mockStores } from '@/data/mockStores';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { ApiService } from '@/services/api';
 import { useRefresh, simulateDataFetch } from '@/hooks/useRefresh';
 
 export default function ProductDetailScreen() {
@@ -18,20 +17,65 @@ export default function ProductDetailScreen() {
   const colors = Colors[colorScheme];
   const { state: cartState, addItem, updateQuantity, getItemQuantity } = useCart();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [product, setProduct] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch product details
+  useEffect(() => {
+    fetchProductDetails();
+  }, [id]);
+
+  const fetchProductDetails = async () => {
+    try {
+      setLoading(true);
+      // For now, create a temporary product object
+      // TODO: Replace with actual API call when product detail endpoint is available
+      setProduct({
+        id: id,
+        name: 'Product',
+        price: 0,
+        image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&h=300&fit=crop',
+        category: 'General',
+        unit: 'piece',
+        description: 'Product details will be loaded from API',
+      });
+    } catch (error) {
+      console.error('Error fetching product:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Pull-to-refresh functionality
   const { refreshing, onRefresh } = useRefresh(async () => {
-    await simulateDataFetch(900); // Simulate loading product details
+    await fetchProductDetails();
+    await simulateDataFetch(500);
   });
 
-  // Find the product
-  const product = mockProducts.find(p => p.id === id);
-  
+  // Temporary store object
+  const store = {
+    id: '1',
+    name: 'Store',
+    logo: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=100&h=100&fit=crop',
+    rating: 4.5,
+    deliveryTime: '20-30 min',
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.centerContent}>
+          <Text style={[styles.errorText, { color: colors.text }]}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!product) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.divider }]}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
           >
@@ -46,8 +90,6 @@ export default function ProductDetailScreen() {
     );
   }
 
-  // Find the store for this product (for demo, using first store)
-  const store = mockStores[0];
   const currentQuantity = getItemQuantity(product.id);
 
   // Product images (for demo, using same image multiple times)

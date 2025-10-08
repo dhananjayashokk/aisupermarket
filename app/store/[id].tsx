@@ -7,10 +7,56 @@ import { Layout, Spacing } from '@/constants/Layout';
 import { Typography, TextStyles } from '@/constants/Typography';
 import { useAppColorScheme } from '@/contexts/ThemeContext';
 import { useCart } from '@/contexts/CartContext';
-import { mockStores } from '@/data/mockStores';
-import { mockProducts, categories } from '@/data/mockProducts';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRefresh, simulateDataFetch } from '@/hooks/useRefresh';
+import { ApiService } from '@/services/api';
+
+// Helper function to get local product images
+const getProductImage = (productName: string, productUrl?: string) => {
+  // Mapping of product names to local image files
+  const imageMap: { [key: string]: any } = {
+    'Amul Butter 500g': require('@/assets/images/products/amul-butter.jpg'),
+    'Amul Curd 200g': require('@/assets/images/products/amul-curd.jpg'),
+    'Britannia Good Day 150g': require('@/assets/images/products/britannia-good-day.jpg'),
+    'Farm Fresh Eggs 12pcs': require('@/assets/images/products/farm-fresh-eggs.jpg'),
+    // Add more mappings as you add more images
+  };
+
+  // First try to use local image if it exists
+  if (imageMap[productName]) {
+    return { source: imageMap[productName], exists: true };
+  }
+
+  // Then try to use the product_url from API if it exists
+  if (productUrl) {
+    return { source: { uri: productUrl }, exists: true };
+  }
+
+  // No image available
+  return { source: null, exists: false };
+};
+
+// Helper function to format variant attributes
+const formatVariantAttributes = (product: any) => {
+  // First check if there's a direct formattedVariantAttributes field (most reliable)
+  if (product.formattedVariantAttributes) {
+    return product.formattedVariantAttributes;
+  }
+
+  // Fallback: Check variantCombination.attributeDetails for detailed info
+  if (product.variantCombination?.attributeDetails && Array.isArray(product.variantCombination.attributeDetails)) {
+    const attributes = product.variantCombination.attributeDetails.map((attr: any) => {
+      if (attr.optionName && attr.valueName) {
+        return `${attr.optionName}: ${attr.valueName}`;
+      }
+      return attr.valueName || attr.value;
+    }).filter(Boolean);
+    
+    return attributes.length > 0 ? attributes.join(' • ') : null;
+  }
+
+  return null;
+};
 
 export default function StoreDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -18,32 +64,121 @@ export default function StoreDetailScreen() {
   const colors = Colors[colorScheme];
   const { state: cartState, addItem, updateQuantity, getItemQuantity } = useCart();
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+
+  // Fetch products for this store
+  useEffect(() => {
+    if (id) {
+      fetchStoreProducts();
+    }
+  }, [id]);
+
+  const fetchStoreProducts = async () => {
+    try {
+      setLoadingProducts(true);
+      const response = await ApiService.products.getStoreProducts({
+        // We can add store-specific filters here if needed
+        limit: 100
+      });
+      
+      if (response.products) {
+        console.log('📋 API Response - Total products:', response.products.length);
+        
+        // Log first few products to understand structure
+        response.products.slice(0, 3).forEach((product, index) => {
+          console.log(`Product ${index + 1}: ${product.name}`);
+          if (product.attributeDetails) {
+            console.log('  - attributeDetails:', product.attributeDetails);
+            if (product.attributeDetails.variantCombination) {
+              console.log('  - variantCombination:', product.attributeDetails.variantCombination);
+            }
+          } else {
+            console.log('  - No attributeDetails found');
+          }
+        });
+        
+        setProducts(response.products);
+      }
+      
+      // Use categories directly from API response
+      console.log('API Response categories:', response.categories);
+      if (response.categories) {
+        const categoriesWithIcons = response.categories.map((category: any) => ({
+          id: category.id,
+          name: category.name,
+          icon: getCategoryIcon(category.name)
+        }));
+        console.log('Processed categories with icons:', categoriesWithIcons);
+        setCategories(categoriesWithIcons);
+      } else {
+        console.log('No categories found in API response');
+      }
+    } catch (error) {
+      console.error('Error fetching store products:', error);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  // Helper function to get category icons
+  const getCategoryIcon = (categoryName: string) => {
+    const iconMap: { [key: string]: string } = {
+      'beverages': '🥤',
+      'dairy': '🥛',
+      'dairy & bakery': '🥛',
+      'bakery': '🍞',
+      'snacks': '🍿',
+      'groceries': '🛒',
+      'groceries & staples': '🛒',
+      'staples': '🌾',
+      'fruits': '🍎',
+      'vegetables': '🥕',
+      'fresh produce': '🥬',
+      'produce': '🥬',
+      'meat': '🥩',
+      'seafood': '🐟',
+      'frozen': '🧊',
+      'personal care': '🧴',
+      'household': '🧽',
+      'home care': '🧽',
+      'baby care': '👶',
+      'health': '💊',
+      'electronics': '📱'
+    };
+    return iconMap[categoryName.toLowerCase()] || '🛍️';
+  };
 
   // Pull-to-refresh functionality
   const { refreshing, onRefresh } = useRefresh(async () => {
-    await simulateDataFetch(1100); // Simulate loading store and product data
+    await fetchStoreProducts();
+    await simulateDataFetch(500);
   });
 
-  // Find the store
-  const store = mockStores.find(s => s.id === id);
-  
-  if (!store) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.text }]}>Store not found</Text>
-      </SafeAreaView>
-    );
-  }
+  // Temporary store object - will be fetched from API later
+  const store = {
+    id: id,
+    name: 'Store',
+    deliveryTime: '20-30 min',
+    deliveryFee: 20,
+  };
 
   // Filter products by category
   const filteredProducts = selectedCategory === 'all' 
-    ? mockProducts 
-    : mockProducts.filter(p => p.category === selectedCategory);
+    ? products 
+    : products.filter(p => p.categoryName === selectedCategory);
 
   const storeCategories = [
-    { id: 'all', name: 'All Items', icon: '🛍️' },
-    ...categories.slice(0, 6)
+    { id: 'all', name: 'All Items', icon: '🛒' },
+    ...categories
   ];
+  
+  // Debug: log the final categories array
+  if (storeCategories.length !== (categories.length + 1)) {
+    console.log('Categories state:', categories);
+    console.log('Final storeCategories:', storeCategories);
+  }
 
   const renderCategoryTab = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -77,13 +212,21 @@ export default function StoreDetailScreen() {
   );
 
   const handleAddToCart = (product: any) => {
+    const imageInfo = getProductImage(product.name, product.image_url || product.product_url || product.variant?.images?.primary);
+    
+    // Get image URL for cart - use placeholder if no image exists
+    let imageUrl = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&h=300&fit=crop';
+    if (imageInfo.exists && imageInfo.source?.uri) {
+      imageUrl = imageInfo.source.uri;
+    }
+    
     addItem({
       id: product.id,
       name: product.name,
-      price: product.price,
-      image: product.image,
-      category: product.category,
-      unit: product.unit,
+      price: parseFloat(product.price),
+      image: imageUrl,
+      category: product.categoryName,
+      unit: product.unit || 'piece',
       storeId: store.id,
       storeName: store.name,
     });
@@ -91,6 +234,15 @@ export default function StoreDetailScreen() {
 
   const renderProduct = ({ item }: { item: any }) => {
     const quantity = getItemQuantity(item.id);
+    const imageInfo = getProductImage(item.name, item.image_url || item.product_url || item.variant?.images?.primary);
+    
+    // Debug: Log product structure to see variant info
+    if (item.formattedVariantAttributes || item.variantCombination) {
+      console.log('Product with variant:', item.name);
+      console.log('- formattedVariantAttributes:', item.formattedVariantAttributes);
+      console.log('- variantCombination:', item.variantCombination);
+      console.log('- Formatted result:', formatVariantAttributes(item));
+    }
     
     return (
       <TouchableOpacity
@@ -107,16 +259,22 @@ export default function StoreDetailScreen() {
           },
         })}
       >
-        <Image 
-          source={{ uri: item.image }} 
-          style={styles.productImage}
-          {...Platform.select({
-            web: {
-              draggable: false,
-              onDragStart: (e: any) => e.preventDefault(),
-            },
-          })}
-        />
+        {imageInfo.exists ? (
+          <Image 
+            source={imageInfo.source}
+            style={styles.productImage}
+            {...Platform.select({
+              web: {
+                draggable: false,
+                onDragStart: (e: any) => e.preventDefault(),
+              },
+            })}
+          />
+        ) : (
+          <View style={[styles.productImage, styles.placeholderImage, { backgroundColor: colors.divider }]}>
+            <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>📦</Text>
+          </View>
+        )}
         
         {item.discount && (
           <View style={[styles.discountBadge, { backgroundColor: colors.discount }]}>
@@ -125,23 +283,29 @@ export default function StoreDetailScreen() {
             </Text>
           </View>
         )}
+        
 
         <View style={styles.productInfo}>
-          <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>
+          <Text style={[styles.productName, { color: colors.text }]}>
             {item.name}
           </Text>
+          {formatVariantAttributes(item) && (
+            <Text style={[styles.productVariant, { color: colors.textSecondary }]}>
+              {formatVariantAttributes(item)}
+            </Text>
+          )}
           <Text style={[styles.productUnit, { color: colors.textSecondary }]}>
-            {item.unit}
+            {item.unit || 'piece'}
           </Text>
           
           <View style={styles.productFooter}>
             <View style={styles.priceContainer}>
               <Text style={[styles.productPrice, { color: colors.text }]}>
-                ₹{item.price}
+                ₹{parseFloat(item.price).toFixed(2)}
               </Text>
-              {item.originalPrice && (
+              {item.mrp && parseFloat(item.mrp) > parseFloat(item.price) && (
                 <Text style={[styles.originalPrice, { color: colors.textTertiary }]}>
-                  ₹{item.originalPrice}
+                  ₹{parseFloat(item.mrp).toFixed(2)}
                 </Text>
               )}
             </View>
@@ -227,123 +391,88 @@ export default function StoreDetailScreen() {
           />
         }
       >
-        {/* Store Banner */}
-        <View style={styles.bannerContainer}>
-          <Image 
-            source={{ uri: store.banner }} 
-            style={styles.bannerImage}
-            resizeMode="cover"
-            {...Platform.select({
-              web: {
-                draggable: false,
-                onDragStart: (e: any) => e.preventDefault(),
-              },
-            })}
-          />
-          <View style={[styles.bannerOverlay, { backgroundColor: colors.overlay }]}>
-            <View style={styles.storeDetails}>
-              <Image 
-                source={{ uri: store.logo }} 
-                style={styles.storeLogo}
-                {...Platform.select({
-                  web: {
-                    draggable: false,
-                    onDragStart: (e: any) => e.preventDefault(),
-                  },
-                })}
-              />
-              <View style={styles.storeInfo}>
-                <Text style={[styles.storeName, { color: colors.textInverse }]}>
-                  {store.name}
-                </Text>
-                <View style={styles.storeStats}>
-                  <View style={styles.statItem}>
-                    <IconSymbol name="star.fill" size={16} color={colors.rating} />
-                    <Text style={[styles.statText, { color: colors.textInverse }]}>
-                      {store.rating}
-                    </Text>
-                  </View>
-                  <Text style={[styles.statDivider, { color: colors.textInverse }]}>•</Text>
-                  <Text style={[styles.statText, { color: colors.textInverse }]}>
-                    {store.deliveryTime}
+
+
+        {/* Main Content Area with Sidebar Layout */}
+        <View style={styles.mainContent}>
+          {/* Categories Sidebar */}
+          <View style={[styles.categoriesSidebar, { backgroundColor: colors.surface }]}>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.categoriesList}>
+              {storeCategories.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.categoryItem,
+                    {
+                      backgroundColor: selectedCategory === item.id || selectedCategory === item.name 
+                        ? colors.primary + '20' 
+                        : 'transparent',
+                      borderColor: selectedCategory === item.id || selectedCategory === item.name 
+                        ? colors.primary 
+                        : 'transparent',
+                    }
+                  ]}
+                  onPress={() => setSelectedCategory(item.id === 'all' ? 'all' : item.name)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.categoryIcon}>{item.icon}</Text>
+                  <Text
+                    style={[
+                      styles.categoryName,
+                      {
+                        color: selectedCategory === item.id || selectedCategory === item.name 
+                          ? colors.primary 
+                          : colors.text,
+                        fontWeight: selectedCategory === item.id || selectedCategory === item.name 
+                          ? Typography.fontWeight.semibold 
+                          : Typography.fontWeight.regular
+                      }
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {item.name}
                   </Text>
-                  <Text style={[styles.statDivider, { color: colors.textInverse }]}>•</Text>
-                  <Text style={[styles.statText, { color: colors.textInverse }]}>
-                    {store.distance}
-                  </Text>
-                </View>
-                <Text style={[styles.storeAddress, { color: colors.textInverse + 'CC' }]}>
-                  {store.address}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Products Area */}
+          <View style={styles.productsContainer}>
+            <View style={styles.productsHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {selectedCategory === 'all' ? 'All Products' : selectedCategory}
+              </Text>
+              <Text style={[styles.productCount, { color: colors.textSecondary }]}>
+                {filteredProducts.length} items
+              </Text>
+            </View>
+            
+            {loadingProducts ? (
+              <View style={styles.loadingContainer}>
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                  Loading products...
                 </Text>
               </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Store Status & Offers */}
-        <View style={[styles.statusContainer, { backgroundColor: colors.surface }]}>
-          <View style={styles.statusRow}>
-            <View style={[
-              styles.statusBadge,
-              { backgroundColor: store.isOpen ? colors.success + '20' : colors.error + '20' }
-            ]}>
-              <Text style={[
-                styles.statusText,
-                { color: store.isOpen ? colors.success : colors.error }
-              ]}>
-                {store.isOpen ? 'Open' : 'Closed'}
-              </Text>
-            </View>
-            <Text style={[styles.minOrderText, { color: colors.textSecondary }]}>
-              Min order ₹{store.minOrder}
-            </Text>
-          </View>
-          
-          {store.offers.length > 0 && (
-            <View style={[styles.offerContainer, { backgroundColor: colors.accent + '20' }]}>
-              <IconSymbol name="gift" size={18} color={colors.accent} />
-              <Text style={[styles.offerText, { color: colors.text }]}>
-                {store.offers[0]}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Categories */}
-        <View style={styles.categoriesContainer}>
-          <FlatList
-            data={storeCategories}
-            renderItem={renderCategoryTab}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesList}
-          />
-        </View>
-
-        {/* Products Grid */}
-        <View style={styles.productsContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {selectedCategory === 'all' ? 'All Products' : selectedCategory}
-            <Text style={[styles.productCount, { color: colors.textSecondary }]}>
-              {' '}({filteredProducts.length} items)
-            </Text>
-          </Text>
-          
-          <View style={styles.productsGrid}>
-            {filteredProducts.map((product, index) => {
-              // Create rows of 2 products each
-              if (index % 2 === 0) {
-                const nextProduct = filteredProducts[index + 1];
-                return (
-                  <View key={`row-${index}`} style={styles.productRow}>
-                    {renderProduct({ item: product })}
-                    {nextProduct && renderProduct({ item: nextProduct })}
-                  </View>
-                );
-              }
-              return null; // Skip odd indices as they're handled by the previous even index
-            })}
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.productsScrollView}>
+                <View style={styles.productsGrid}>
+                  {filteredProducts.map((product, index) => {
+                    // Create rows of 2 products each
+                    if (index % 2 === 0) {
+                      const nextProduct = filteredProducts[index + 1];
+                      return (
+                        <View key={`row-${index}`} style={styles.productRow}>
+                          {renderProduct({ item: product })}
+                          {nextProduct && renderProduct({ item: nextProduct })}
+                        </View>
+                      );
+                    }
+                    return null; // Skip odd indices as they're handled by the previous even index
+                  })}
+                </View>
+              </ScrollView>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -398,152 +527,70 @@ const styles = StyleSheet.create({
   searchButton: {
     padding: Spacing.xs,
   },
-  bannerContainer: {
-    height: 200,
-    position: 'relative',
-  },
-  bannerImage: {
-    width: '100%',
-    height: '100%',
-    ...Platform.select({
-      web: {
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        MozUserSelect: 'none',
-        msUserSelect: 'none',
-        WebkitUserDrag: 'none',
-        WebkitTouchCallout: 'none',
-        pointerEvents: 'none',
-      },
-    }),
-  },
-  bannerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    padding: Spacing.lg,
-  },
-  storeDetails: {
+  // New Sidebar Layout Styles
+  mainContent: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
-  storeLogo: {
-    width: 60,
-    height: 60,
-    borderRadius: Layout.borderRadius.md,
-    marginRight: Spacing.md,
-    borderWidth: 2,
-    borderColor: 'white',
-    ...Platform.select({
-      web: {
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        MozUserSelect: 'none',
-        msUserSelect: 'none',
-        WebkitUserDrag: 'none',
-        WebkitTouchCallout: 'none',
-        pointerEvents: 'none',
-      },
-    }),
-  },
-  storeInfo: {
     flex: 1,
   },
-  storeName: {
-    ...TextStyles.h4,
-    marginBottom: Spacing.xs,
+  categoriesSidebar: {
+    width: 100,
+    borderRightWidth: 1,
+    borderRightColor: '#F0F0F0',
+    paddingVertical: Spacing.md,
   },
-  storeStats: {
+  categoriesList: {
+    flex: 1,
+  },
+  categoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: Spacing.xs,
+    marginHorizontal: 4,
     marginBottom: Spacing.xs,
+    borderRadius: Layout.borderRadius.sm,
+    borderWidth: 1,
+    minHeight: 40,
   },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  categoryIcon: {
+    fontSize: 14,
+    marginRight: 6,
+    width: 18,
+    textAlign: 'center',
   },
-  statText: {
+  categoryName: {
     ...TextStyles.bodySmall,
-    marginLeft: Spacing.xxs,
+    fontSize: Typography.fontSize.xs,
+    flex: 1,
+    lineHeight: 14,
   },
-  statDivider: {
-    ...TextStyles.bodySmall,
-    marginHorizontal: Spacing.sm,
+  productsContainer: {
+    flex: 1,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
   },
-  storeAddress: {
-    ...TextStyles.caption,
-  },
-  statusContainer: {
-    padding: Spacing.lg,
-  },
-  statusRow: {
+  productsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  statusBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Layout.borderRadius.sm,
-  },
-  statusText: {
-    ...TextStyles.caption,
-    fontWeight: Typography.fontWeight.semibold,
-  },
-  minOrderText: {
-    ...TextStyles.bodySmall,
-  },
-  offerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: Layout.borderRadius.md,
-  },
-  offerText: {
-    ...TextStyles.body,
-    marginLeft: Spacing.sm,
-    flex: 1,
-  },
-  categoriesContainer: {
-    paddingVertical: Spacing.md,
+    marginBottom: Spacing.lg,
+    paddingBottom: Spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  categoriesList: {
-    paddingHorizontal: Spacing.lg,
-  },
-  categoryTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    marginRight: Spacing.sm,
-    borderRadius: Layout.borderRadius.lg,
-    borderWidth: 1,
-    minWidth: 100,
-  },
-  categoryTabEmoji: {
-    fontSize: 16,
-    marginRight: Spacing.xs,
-  },
-  categoryTabText: {
-    ...TextStyles.bodySmall,
-    fontWeight: Typography.fontWeight.medium,
-  },
-  productsContainer: {
-    padding: Spacing.lg,
+  productsScrollView: {
+    flex: 1,
   },
   sectionTitle: {
     ...TextStyles.h5,
-    marginBottom: Spacing.lg,
+    flex: 1,
   },
   productCount: {
-    ...TextStyles.body,
-    fontWeight: Typography.fontWeight.regular,
+    ...TextStyles.bodySmall,
+    fontWeight: Typography.fontWeight.medium,
   },
   productsGrid: {
     flex: 1,
-    paddingTop: Spacing.md,
   },
   productRow: {
     flexDirection: 'row',
@@ -604,7 +651,15 @@ const styles = StyleSheet.create({
     ...TextStyles.body,
     fontWeight: Typography.fontWeight.medium,
     marginBottom: Spacing.xxs,
-    minHeight: 40,
+    lineHeight: 18,
+    flexWrap: 'wrap',
+  },
+  productVariant: {
+    ...TextStyles.caption,
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.regular,
+    fontStyle: 'italic',
+    marginBottom: Spacing.xxs,
   },
   productUnit: {
     ...TextStyles.caption,
@@ -689,5 +744,22 @@ const styles = StyleSheet.create({
     ...TextStyles.bodyLarge,
     textAlign: 'center',
     marginTop: 100,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+  },
+  loadingText: {
+    ...TextStyles.body,
+    textAlign: 'center',
+  },
+  placeholderImage: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontSize: 32,
   },
 });

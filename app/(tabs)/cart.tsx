@@ -1,21 +1,104 @@
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { Layout, Spacing } from '@/constants/Layout';
 import { Typography, TextStyles } from '@/constants/Typography';
 import { useAppColorScheme } from '@/contexts/ThemeContext';
 import { useCart } from '@/contexts/CartContext';
+import { ApiService } from '@/services/api';
+import { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function CartScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme];
   const { state: cartState, updateQuantity, removeItem, clearCart } = useCart();
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const deliveryFee = cartState.totalAmount > 500 ? 0 : 30; // Free delivery over ₹500
   const subtotal = cartState.totalAmount;
   const savings = 0; // We don't have original price data in our cart context
   const total = subtotal + deliveryFee;
+
+  const handlePlaceOrder = async () => {
+    if (cartState.items.length === 0) {
+      Alert.alert('Error', 'Your cart is empty');
+      return;
+    }
+
+    setIsPlacingOrder(true);
+
+    try {
+      // Prepare order data according to the API specification
+      const orderData = {
+        items: cartState.items.map(item => ({
+          storeProductId: item.id, // Using item.id as storeProductId
+          quantity: item.quantity
+        })),
+        deliverySlot: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour from now
+        specialInstructions: "Please call when arriving",
+        paymentMethodId: 1 // Default payment method
+      };
+
+      const response = await ApiService.orders.placeDeliveryOrder(orderData);
+      
+      console.log('Order placement response:', response);
+      
+      // Success - clear cart and navigate to order tracking
+      clearCart();
+      
+      // Navigate to order tracking page with the order ID
+      const orderId = response.orderId || response.id || response.orderNumber || response.order?.id;
+      
+      if (orderId) {
+        console.log('Navigating to order tracking with orderId:', orderId);
+        router.push(`/order/${orderId}`);
+      } else {
+        // Generate a fallback order ID based on timestamp
+        const fallbackOrderId = `ORD-${Date.now()}`;
+        console.warn('No order ID found in response, using fallback:', fallbackOrderId);
+        console.warn('Full response object:', JSON.stringify(response, null, 2));
+        
+        // Store cart data for the fallback order
+        const fallbackOrderData = {
+          orderId: fallbackOrderId,
+          items: cartState.items,
+          totalAmount: total,
+          subtotal: subtotal,
+          deliveryFee: deliveryFee,
+          timestamp: Date.now(),
+          paymentMethod: 'Cash on Delivery'
+        };
+        
+        AsyncStorage.setItem(`fallback_order_${fallbackOrderId}`, JSON.stringify(fallbackOrderData))
+          .then(() => {
+            console.log('Stored fallback order data:', fallbackOrderId);
+          })
+          .catch(err => {
+            console.error('Failed to store fallback order data:', err);
+          });
+        
+        router.push(`/order/${fallbackOrderId}`);
+      }
+      
+      // Show brief success message
+      Alert.alert(
+        'Order Placed!', 
+        'Your order has been placed successfully. You can track its progress now.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error placing order:', error);
+      Alert.alert(
+        'Order Failed', 
+        error instanceof Error ? error.message : 'Failed to place order. Please try again.'
+      );
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
 
   const QuantitySelector = ({ quantity, onIncrease, onDecrease }: any) => (
     <View style={[styles.quantitySelector, { borderColor: colors.border }]}>
@@ -200,13 +283,20 @@ export default function CartScreen() {
               </Text>
             </View>
             <TouchableOpacity 
-              style={[styles.checkoutButton, { backgroundColor: colors.primary }]}
+              style={[styles.checkoutButton, { 
+                backgroundColor: isPlacingOrder ? colors.textSecondary : colors.primary,
+                opacity: isPlacingOrder ? 0.7 : 1
+              }]}
               activeOpacity={0.8}
+              onPress={handlePlaceOrder}
+              disabled={isPlacingOrder}
             >
               <Text style={[styles.checkoutButtonText, { color: colors.textInverse }]}>
-                Proceed to Checkout
+                {isPlacingOrder ? 'Placing Order...' : 'Place Order'}
               </Text>
-              <IconSymbol name="arrow.right" size={20} color={colors.textInverse} />
+              {!isPlacingOrder && (
+                <IconSymbol name="arrow.right" size={20} color={colors.textInverse} />
+              )}
             </TouchableOpacity>
           </View>
         </>

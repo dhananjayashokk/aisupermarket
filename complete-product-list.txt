@@ -1,0 +1,91 @@
+AISUPERMART - COMPLETE PRODUCT LIST FROM DATABASE
+================================================
+
+You're absolutely right! Here's the COMPLETE list of products from your actual retail-sass database:
+
+DAIRY & BAKERY (7 products):
+1. Amul Fresh Milk 1L
+2. Amul Butter 500g
+3. Amul Cheese Slice 200g
+4. Farm Fresh Eggs 12pcs
+5. Amul Curd 200g
+6. Britannia White Bread 400g
+7. Britannia Brown Bread 400g
+
+GROCERIES & STAPLES (8 products):
+8. Basmati Rice 1kg
+9. Sona Masoori Rice 5kg
+10. Toor Dal 1kg
+11. Coconut Oil 1L
+12. Atta Wheat Flour 5kg
+13. Sugar 1kg
+14. Tata Salt 1kg
+
+BEVERAGES & SNACKS (5 products):
+15. Coca Cola 600ml
+16. Sprite 600ml
+17. Nestle Maggi 280g
+18. Parle-G Original 200g
+19. Britannia Good Day 150g ⭐ (This is what you saw!)
+
+FRESH PRODUCE - Weight Based (8 products):
+20. Banana Kerala
+21. Apple Shimla
+22. Orange Nagpur
+23. Onion
+24. Tomato
+25. Potato
+26. Green Chilli
+27. Ginger
+
+PERSONAL CARE (3 products):
+28. Dove Beauty Soap 100g
+29. Head & Shoulders Shampoo 340ml
+30. Colgate Toothpaste 200g
+
+HOUSEHOLD/HOME CARE (2 products):
+31. Surf Excel Detergent 1kg
+32. Vim Dishwash Gel 500ml
+
+TOTAL: 32 Products
+
+RECOMMENDED IMAGE NAMING CONVENTION:
+- Use lowercase with hyphens, remove units for simplicity
+- Examples:
+  * amul-fresh-milk.jpg
+  * amul-butter.jpg
+  * amul-cheese-slice.jpg
+  * farm-fresh-eggs.jpg
+  * amul-curd.jpg
+  * britannia-white-bread.jpg
+  * britannia-brown-bread.jpg
+  * basmati-rice.jpg
+  * sona-masoori-rice.jpg
+  * toor-dal.jpg
+  * coconut-oil.jpg
+  * atta-wheat-flour.jpg
+  * sugar.jpg
+  * tata-salt.jpg
+  * coca-cola.jpg
+  * sprite.jpg
+  * nestle-maggi.jpg
+  * parle-g-original.jpg
+  * britannia-good-day.jpg ⭐
+  * banana-kerala.jpg
+  * apple-shimla.jpg
+  * orange-nagpur.jpg
+  * onion.jpg
+  * tomato.jpg
+  * potato.jpg
+  * green-chilli.jpg
+  * ginger.jpg
+  * dove-beauty-soap.jpg
+  * head-shoulders-shampoo.jpg
+  * colgate-toothpaste.jpg
+  * surf-excel-detergent.jpg
+  * vim-dishwash-gel.jpg
+
+NOTE: This is the complete list from your retail-sass database seed file. The 20 products I showed earlier were from the mobile app's mock data, but your backend has these 32 products!
+
+VARIANTS:
+Some products like Coca Cola, Sprite, Britannia Good Day, and Basmati Rice have multiple variants (different flavors, sizes) configured in your database.
