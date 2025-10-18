@@ -222,7 +222,7 @@ export default function CartScreen() {
                   Item Total
                 </Text>
                 <Text style={[styles.billValue, { color: colors.text }]}>
-                  ₹{subtotal}
+                  ₹{subtotal.toFixed(2)}
                 </Text>
               </View>
 
@@ -231,7 +231,7 @@ export default function CartScreen() {
                   Delivery Fee
                 </Text>
                 <Text style={[styles.billValue, { color: colors.text }]}>
-                  ₹{deliveryFee}
+                  ₹{deliveryFee.toFixed(2)}
                 </Text>
               </View>
 
@@ -241,7 +241,7 @@ export default function CartScreen() {
                     Total Savings
                   </Text>
                   <Text style={[styles.billValue, { color: colors.success }]}>
-                    -₹{savings}
+                    -₹{savings.toFixed(2)}
                   </Text>
                 </View>
               )}
@@ -251,7 +251,7 @@ export default function CartScreen() {
                   To Pay
                 </Text>
                 <Text style={[styles.totalValue, { color: colors.text }]}>
-                  ₹{total}
+                  ₹{total.toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -276,7 +276,7 @@ export default function CartScreen() {
           }]}>
             <View style={styles.checkoutInfo}>
               <Text style={[styles.checkoutTotal, { color: colors.text }]}>
-                ₹{total}
+                ₹{total.toFixed(2)}
               </Text>
               <Text style={[styles.checkoutItems, { color: colors.textSecondary }]}>
                 {cartState.totalItems} item{cartState.totalItems !== 1 ? 's' : ''}
