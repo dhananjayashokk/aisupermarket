@@ -348,27 +348,33 @@ export default function StoreDetailScreen() {
             {item.unit || "piece"}
           </Text>
 
-          <View style={styles.productFooter}>
-            <View style={styles.priceContainer}>
-              <Text style={[styles.productPrice, { color: colors.text }]}>
-                ₹{parseFloat(item.price).toFixed(2)}
+          <View style={styles.priceContainer}>
+            <Text
+              style={[styles.productPrice, { color: colors.text }]}
+              numberOfLines={1}
+            >
+              ₹{parseFloat(item.price).toFixed(2)}
+            </Text>
+            {item.mrp && parseFloat(item.mrp) > parseFloat(item.price) && (
+              <Text
+                style={[styles.originalPrice, { color: colors.textTertiary }]}
+                numberOfLines={1}
+              >
+                ₹{parseFloat(item.mrp).toFixed(2)}
               </Text>
-              {item.mrp && parseFloat(item.mrp) > parseFloat(item.price) && (
-                <Text
-                  style={[styles.originalPrice, { color: colors.textTertiary }]}
-                >
-                  ₹{parseFloat(item.mrp).toFixed(2)}
-                </Text>
-              )}
-            </View>
+            )}
+          </View>
 
+          <View style={styles.productFooter}>
             {quantity === 0 ? (
               <TouchableOpacity
                 style={[styles.addButton, { backgroundColor: colors.primary }]}
                 activeOpacity={0.8}
                 onPress={() => handleAddToCart(item)}
               >
-                <IconSymbol name="plus" size={16} color={colors.textInverse} />
+                <Text style={[styles.addButtonText, { color: colors.textInverse }]}>
+                  ADD
+                </Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.quantityControls}>
@@ -789,6 +795,8 @@ const styles = StyleSheet.create({
   },
   productInfo: {
     flex: 1,
+    minHeight: 140,
+    justifyContent: 'space-between',
   },
   productName: {
     ...TextStyles.body,
@@ -796,6 +804,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xxs,
     lineHeight: 18,
     flexWrap: "wrap",
+    minHeight: 36,
   },
   productVariant: {
     ...TextStyles.caption,
@@ -803,51 +812,65 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.regular,
     fontStyle: "italic",
     marginBottom: Spacing.xxs,
+    minHeight: 16,
   },
   productUnit: {
     ...TextStyles.caption,
     marginBottom: Spacing.sm,
+    minHeight: 14,
   },
   productFooter: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: Spacing.xs,
+    marginTop: Spacing.xs,
   },
   priceContainer: {
-    flex: 1,
+    marginBottom: Spacing.sm,
+    minHeight: 40,
+    justifyContent: 'flex-start',
   },
   productPrice: {
     ...TextStyles.priceSmall,
+    flexShrink: 0,
+    marginBottom: Spacing.xxs,
   },
   originalPrice: {
     ...TextStyles.caption,
     textDecorationLine: "line-through",
+    marginBottom: Spacing.xxs,
   },
   addButton: {
-    width: 32,
+    width: 80,
     height: 32,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
+    flexDirection: "row",
+  },
+  addButtonText: {
+    ...TextStyles.bodySmall,
+    fontWeight: Typography.fontWeight.bold,
+    letterSpacing: 0.5,
   },
   quantityControls: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "transparent",
+    flexShrink: 0,
   },
   quantityButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
   quantityText: {
     ...TextStyles.bodySmall,
     fontWeight: Typography.fontWeight.semibold,
-    marginHorizontal: Spacing.sm,
-    minWidth: 20,
+    marginHorizontal: Spacing.xs,
+    minWidth: 16,
     textAlign: "center",
   },
   ratingContainer: {
