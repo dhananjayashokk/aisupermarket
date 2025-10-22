@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// API Configuration
-const API_BASE_URL = "http://localhost:3000/api";
-const MOBILE_API_BASE_URL = "http://localhost:3000/api/mobile";
+// API Configuration - Use environment variable with fallback
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api";
+const MOBILE_API_BASE_URL = `${API_BASE_URL}/mobile`;
 
 // Helper function to get auth headers
 const getAuthHeaders = async () => {

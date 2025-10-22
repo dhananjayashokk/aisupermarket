@@ -85,8 +85,10 @@ const initialState: AuthState = {
   phoneNumber: null,
 };
 
-// API Configuration
-const API_BASE_URL = 'http://localhost:3000/api/mobile';
+// API Configuration - Use environment variable with fallback
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL
+  ? `${process.env.EXPO_PUBLIC_API_URL}/mobile`
+  : 'http://localhost:3000/api/mobile';
 
 // Real API functions that connect to retail-sass backend
 const sendOTPToBackend = async (phoneNumber: string): Promise<{ success: boolean; message: string }> => {
