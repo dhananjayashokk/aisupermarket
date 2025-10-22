@@ -1,23 +1,28 @@
-import { StyleSheet, ScrollView, View, Text, Alert, TouchableOpacity, FlatList } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { ThemedButton, ThemedInput, ThemedCard, Skeleton } from '@/components/themed';
-import { useAppColorScheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/Colors';
-import { Spacing } from '@/constants/Layout';
-import { TextStyles } from '@/constants/Typography';
-import { useState, useEffect } from 'react';
-import { ApiService } from '@/services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Colors } from "@/constants/Colors";
+import { Spacing } from "@/constants/Layout";
+import { TextStyles } from "@/constants/Typography";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAppColorScheme } from "@/contexts/ThemeContext";
+import { ApiService } from "@/services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface Customer {
   id: number;
   name: string;
   phone: string;
   email?: string;
-  customerType: 'regular' | 'premium' | 'vip';
+  customerType: "regular" | "premium" | "vip";
   loyaltyPoints: number;
 }
 
@@ -25,8 +30,8 @@ export default function LoginScreen() {
   const colorScheme = useAppColorScheme();
   const colors = Colors[colorScheme];
   const { authenticateWithMobile, state } = useAuth();
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [customerName, setCustomerName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [customerName, setCustomerName] = useState("");
   const [showNameField, setShowNameField] = useState(false);
   const [demoCustomers, setDemoCustomers] = useState<Customer[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -44,7 +49,7 @@ export default function LoginScreen() {
       const response = await ApiService.customer.getDemoCustomers();
       setDemoCustomers(response.customers || []);
     } catch (error) {
-      console.error('Error fetching demo customers:', error);
+      console.error("Error fetching demo customers:", error);
       // Fallback to empty array if fetch fails
       setDemoCustomers([]);
     } finally {
@@ -55,103 +60,126 @@ export default function LoginScreen() {
   const handleDemoLogin = async (customer: Customer) => {
     try {
       // Use the new mobile auth with the demo customer's phone number and name
-      const result = await authenticateWithMobile(customer.phone, customer.name);
-      
+      const result = await authenticateWithMobile(
+        customer.phone,
+        customer.name
+      );
+
       if (result.success) {
-        Alert.alert('Success', `Welcome, ${customer.name}!`);
-        router.replace('/(tabs)');
+        Alert.alert("Success", `Welcome, ${customer.name}!`);
+        router.replace("/(tabs)");
       } else {
         // Fallback to old demo login method if API fails
-        await AsyncStorage.setItem('user', JSON.stringify({
-          id: customer.id.toString(),
-          name: customer.name,
-          phone: customer.phone,
-          email: customer.email || '',
-          customerType: customer.customerType,
-          loyaltyPoints: customer.loyaltyPoints,
-          isDemo: true,
-        }));
-        
-        await AsyncStorage.setItem('accessToken', `demo_token_${customer.id}`);
-        router.replace('/(tabs)');
+        await AsyncStorage.setItem(
+          "user",
+          JSON.stringify({
+            id: customer.id.toString(),
+            name: customer.name,
+            phone: customer.phone,
+            email: customer.email || "",
+            customerType: customer.customerType,
+            loyaltyPoints: customer.loyaltyPoints,
+            isDemo: true,
+          })
+        );
+
+        await AsyncStorage.setItem("accessToken", `demo_token_${customer.id}`);
+        router.replace("/(tabs)");
       }
     } catch (error) {
-      console.error('Error during demo login:', error);
-      Alert.alert('Error', 'Failed to login with demo customer');
+      console.error("Error during demo login:", error);
+      Alert.alert("Error", "Failed to login with demo customer");
     }
   };
 
   const getCustomerTypeColor = (type: string) => {
     switch (type) {
-      case 'vip': return '#FFD700';
-      case 'premium': return '#E6E6FA';
-      default: return colors.textSecondary;
+      case "vip":
+        return "#FFD700";
+      case "premium":
+        return "#E6E6FA";
+      default:
+        return colors.textSecondary;
     }
   };
 
   const getCustomerTypeIcon = (type: string) => {
     switch (type) {
-      case 'vip': return '👑';
-      case 'premium': return '⭐';
-      default: return '👤';
+      case "vip":
+        return "👑";
+      case "premium":
+        return "⭐";
+      default:
+        return "👤";
     }
   };
 
   const handleMobileAuth = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
-      Alert.alert('Error', 'Please enter a valid phone number');
+      Alert.alert("Error", "Please enter a valid phone number");
       return;
     }
 
     // First try without name to see if customer exists
     if (!showNameField) {
       const result = await authenticateWithMobile(phoneNumber);
-      
+
       if (result.success) {
-        Alert.alert('Success', result.message);
-        router.replace('/(tabs)');
-      } else if (result.message?.includes('new customer') || result.isNewCustomer) {
+        Alert.alert("Success", result.message);
+        router.replace("/(tabs)");
+      } else if (
+        result.message?.includes("new customer") ||
+        result.isNewCustomer
+      ) {
         // Customer doesn't exist, show name field
         setShowNameField(true);
-        Alert.alert('New Customer', 'Please provide your name to create an account');
+        Alert.alert(
+          "New Customer",
+          "Please provide your name to create an account"
+        );
       } else {
-        Alert.alert('Error', result.message);
+        Alert.alert("Error", result.message);
       }
     } else {
       // Try with name for new customer
       if (!customerName.trim()) {
-        Alert.alert('Error', 'Please enter your name');
+        Alert.alert("Error", "Please enter your name");
         return;
       }
-      
-      const result = await authenticateWithMobile(phoneNumber, customerName.trim());
-      
+
+      const result = await authenticateWithMobile(
+        phoneNumber,
+        customerName.trim()
+      );
+
       if (result.success) {
-        Alert.alert('Success', result.message);
-        router.replace('/(tabs)');
+        Alert.alert("Success", result.message);
+        router.replace("/(tabs)");
       } else {
-        Alert.alert('Error', result.message);
+        Alert.alert("Error", result.message);
       }
     }
   };
 
   const handleSocialLogin = (provider: string) => {
-    Alert.alert('Info', `${provider} login integration would be implemented here`);
+    Alert.alert(
+      "Info",
+      `${provider} login integration would be implemented here`
+    );
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView 
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.logo, { color: colors.primary }]}>
-            GoGenie
-          </Text>
+          <Text style={[styles.logo, { color: colors.primary }]}>GoGenie</Text>
           <Text style={[styles.tagline, { color: colors.textSecondary }]}>
             Your Genie for Everyday Needs
           </Text>
@@ -162,13 +190,15 @@ export default function LoginScreen() {
           <Text style={[styles.welcomeTitle, { color: colors.text }]}>
             Your Genie Awaits!
           </Text>
-          <Text style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
+          {/* <Text
+            style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}
+          >
             Enter your phone number and let the magic begin
-          </Text>
+          </Text> */}
         </View>
 
         {/* Login Form */}
-        <ThemedCard style={styles.loginCard}>
+        {/* <ThemedCard style={styles.loginCard}>
           <ThemedInput
             label="Phone Number"
             placeholder="Enter your 10-digit phone number"
@@ -178,7 +208,7 @@ export default function LoginScreen() {
             maxLength={10}
             leftIcon="phone"
           />
-          
+
           {showNameField && (
             <ThemedInput
               label="Full Name"
@@ -189,9 +219,15 @@ export default function LoginScreen() {
               style={{ marginTop: Spacing.md }}
             />
           )}
-          
+
           <ThemedButton
-            title={isLoading ? "Processing..." : showNameField ? "Create Account & Login" : "Login"}
+            title={
+              isLoading
+                ? "Processing..."
+                : showNameField
+                ? "Create Account & Login"
+                : "Login"
+            }
             onPress={handleMobileAuth}
             variant="primary"
             size="lg"
@@ -199,110 +235,110 @@ export default function LoginScreen() {
             loading={isLoading}
             style={styles.otpButton}
           />
-          
+
           {showNameField && (
             <ThemedButton
               title="Back"
               onPress={() => {
                 setShowNameField(false);
-                setCustomerName('');
+                setCustomerName("");
               }}
               variant="ghost"
               size="sm"
               style={{ marginTop: Spacing.sm }}
             />
           )}
-          
+
           <Text style={[styles.otpInfo, { color: colors.textTertiary }]}>
-            {showNameField ? 
-              'We\'ll create your account and log you in instantly' :
-              'We\'ll log you in instantly or ask for your name if you\'re new'
-            }
+            {showNameField
+              ? "We'll create your account and log you in instantly"
+              : "We'll log you in instantly or ask for your name if you're new"}
           </Text>
-        </ThemedCard>
-
-        {/* Divider */}
-        <View style={styles.dividerContainer}>
-          <View style={[styles.dividerLine, { backgroundColor: colors.divider }]} />
-          <Text style={[styles.dividerText, { color: colors.textSecondary }]}>
-            or continue with
-          </Text>
-          <View style={[styles.dividerLine, { backgroundColor: colors.divider }]} />
-        </View>
-
-        {/* Social Login */}
-        <View style={styles.socialContainer}>
-          <ThemedButton
-            title="Google"
-            onPress={() => handleSocialLogin('Google')}
-            variant="outline"
-            size="lg"
-            leftIcon="globe"
-            style={StyleSheet.flatten([styles.socialButton, { flex: 1 }])}
-          />
-          
-          <ThemedButton
-            title="Apple"
-            onPress={() => handleSocialLogin('Apple')}
-            variant="outline"
-            size="lg"
-            leftIcon="apple.logo"
-            style={StyleSheet.flatten([styles.socialButton, { flex: 1 }])}
-          />
-        </View>
+        </ThemedCard> */}
 
         {/* Demo Customers Section */}
-        <View style={{ padding: 16, backgroundColor: '#f0f0f0', margin: 16, borderRadius: 8 }}>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#000', marginBottom: 12 }}>
+        <View
+          style={{
+            padding: 16,
+            backgroundColor: "#f0f0f0",
+            margin: 16,
+            borderRadius: 8,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "bold",
+              color: "#000",
+              marginBottom: 12,
+            }}
+          >
             🎭 Demo Login - Actual Customers from Database
           </Text>
-          <Text style={{ color: '#666', marginBottom: 16 }}>
+          <Text style={{ color: "#666", marginBottom: 16 }}>
             Click to login as any customer:
           </Text>
 
           {loadingCustomers ? (
-            <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={{ color: '#666' }}>Loading customers...</Text>
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <Text style={{ color: "#666" }}>Loading customers...</Text>
             </View>
           ) : demoCustomers.length === 0 ? (
-            <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={{ color: '#666' }}>No customers available</Text>
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <Text style={{ color: "#666" }}>No customers available</Text>
             </View>
           ) : (
             demoCustomers.map((customer) => (
               <TouchableOpacity
                 key={customer.id}
                 style={{
-                  backgroundColor: '#fff',
+                  backgroundColor: "#fff",
                   padding: 12,
                   marginBottom: 8,
                   borderRadius: 6,
                   borderWidth: 1,
-                  borderColor: '#ddd'
+                  borderColor: "#ddd",
                 }}
                 onPress={() => handleDemoLogin(customer)}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: '#000', flex: 1 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginBottom: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color: "#000",
+                      flex: 1,
+                    }}
+                  >
                     {customer.name}
                   </Text>
-                  <Text style={{
-                    fontSize: 12,
-                    fontWeight: '700',
-                    color: getCustomerTypeColor(customer.customerType),
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: 4
-                  }}>
-                    {getCustomerTypeIcon(customer.customerType)} {customer.customerType.toUpperCase()}
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: getCustomerTypeColor(customer.customerType),
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      backgroundColor: "#f5f5f5",
+                      borderRadius: 4,
+                    }}
+                  >
+                    {getCustomerTypeIcon(customer.customerType)}{" "}
+                    {customer.customerType.toUpperCase()}
                   </Text>
                 </View>
-                <Text style={{ fontSize: 14, color: '#666' }}>
-                  {customer.phone.replace('+91', '+91 ')} • {customer.loyaltyPoints} points
+                <Text style={{ fontSize: 14, color: "#666" }}>
+                  {customer.phone.replace("+91", "+91 ")} •{" "}
+                  {customer.loyaltyPoints} points
                 </Text>
                 {customer.email && (
-                  <Text style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
+                  <Text style={{ fontSize: 12, color: "#999", marginTop: 2 }}>
                     {customer.email}
                   </Text>
                 )}
@@ -311,20 +347,11 @@ export default function LoginScreen() {
           )}
         </View>
 
-        {/* Guest Option */}
-        <ThemedButton
-          title="Browse Without Magic"
-          onPress={() => router.replace('/(tabs)')}
-          variant="ghost"
-          style={styles.guestButton}
-        />
-
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: colors.textTertiary }]}>
-            By continuing, you agree to our{' '}
-            <Text style={{ color: colors.primary }}>Terms of Service</Text>
-            {' '}and{' '}
+            By continuing, you agree to our{" "}
+            <Text style={{ color: colors.primary }}>Terms of Service</Text> and{" "}
             <Text style={{ color: colors.primary }}>Privacy Policy</Text>
           </Text>
         </View>
@@ -347,20 +374,20 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxxl,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing.xxxl * 2,
   },
   logo: {
     ...TextStyles.h1,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: Spacing.sm,
   },
   tagline: {
     ...TextStyles.body,
-    textAlign: 'center',
+    textAlign: "center",
   },
   welcomeSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing.xxxl,
   },
   welcomeTitle: {
@@ -369,7 +396,7 @@ const styles = StyleSheet.create({
   },
   welcomeSubtitle: {
     ...TextStyles.body,
-    textAlign: 'center',
+    textAlign: "center",
     paddingHorizontal: Spacing.lg,
   },
   loginCard: {
@@ -380,12 +407,12 @@ const styles = StyleSheet.create({
   },
   otpInfo: {
     ...TextStyles.caption,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: Spacing.md,
   },
   dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: Spacing.xl,
   },
   dividerLine: {
@@ -397,7 +424,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   socialContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.md,
     marginBottom: Spacing.xl,
   },
@@ -405,37 +432,37 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   guestButton: {
-    alignSelf: 'center',
+    alignSelf: "center",
     marginBottom: Spacing.xl,
   },
   footer: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
     paddingTop: Spacing.xxxl,
   },
   footerText: {
     ...TextStyles.caption,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 18,
   },
-  
+
   // Demo Customers Styles
   demoSection: {
     marginBottom: Spacing.xl,
   },
   demoHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
   },
   demoTitle: {
     ...TextStyles.h4,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   demoToggle: {
     ...TextStyles.h4,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   demoContent: {
     paddingTop: Spacing.md,
@@ -443,7 +470,7 @@ const styles = StyleSheet.create({
   demoSubtitle: {
     ...TextStyles.bodySmall,
     marginBottom: Spacing.lg,
-    textAlign: 'center',
+    textAlign: "center",
   },
   demoLoadingContainer: {
     gap: Spacing.sm,
@@ -458,29 +485,29 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: Spacing.md,
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   demoCustomerInfo: {
     flex: 1,
   },
   demoCustomerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.xs,
   },
   demoCustomerName: {
     ...TextStyles.bodyLarge,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   demoCustomerType: {
     ...TextStyles.caption,
-    fontWeight: '700',
+    fontWeight: "700",
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   demoCustomerPhone: {
     ...TextStyles.bodySmall,
@@ -488,6 +515,6 @@ const styles = StyleSheet.create({
   },
   demoCustomerPoints: {
     ...TextStyles.bodySmall,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
