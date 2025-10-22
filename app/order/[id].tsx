@@ -743,27 +743,12 @@ export default function OrderTrackingScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.divider }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.surface + '80' }]}
           onPress={() => {
-            console.log('Back button pressed - attempting navigation');
-            try {
-              // Try router.back() first
-              router.back();
-              console.log('router.back() successful');
-            } catch (error) {
-              console.error('router.back() failed:', error);
-              try {
-                // Fallback to navigating to orders page
-                console.log('Trying fallback: navigating to orders');
-                router.push('/(tabs)/orders');
-              } catch (fallbackError) {
-                console.error('Fallback navigation failed:', fallbackError);
-                // Final fallback - go to home
-                console.log('Trying final fallback: navigating to home');
-                router.replace('/(tabs)/');
-              }
-            }
+            console.log('Back button pressed - navigating to home');
+            // Always navigate to the home screen where stores are listed
+            router.replace('/(tabs)/');
           }}
           activeOpacity={0.5}
         >

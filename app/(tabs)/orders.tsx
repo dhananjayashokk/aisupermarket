@@ -32,6 +32,20 @@ export default function OrdersScreen() {
     }
   };
 
+  // Get display label for status
+  const getStatusLabel = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'delivered': return 'Delivered';
+      case 'confirmed': return 'Confirmed';
+      case 'pending': return 'Pending';
+      case 'cancelled': return 'Cancelled';
+      case 'out_for_delivery': return 'Out for Delivery';
+      case 'order_preparing': return 'Preparing';
+      case 'ready_to_dispatch': return 'Ready';
+      default: return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+  };
+
   // Fetch orders from API
   const fetchOrders = async (page = 1, status = 'all', isRefresh = false) => {
     try {
@@ -48,34 +62,51 @@ export default function OrdersScreen() {
         status
       });
 
-      const transformedOrders = response.orders.map((order: any) => ({
-        id: order.id.toString(),
-        orderNumber: order.orderNumber,
-        storeName: order.store?.name || 'Store',
-        storeImage: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=80&h=80&fit=crop&crop=center',
-        date: new Date(order.timestamps.createdAt).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit'
-        }),
-        status: order.status.display.label,
-        statusColor: getStatusColor(order.status.current),
-        totalAmount: `₹${parseFloat(order.pricing.totalAmount).toFixed(0)}`,
-        itemCount: order.itemCount,
-        paymentStatus: order.payment.status,
-        paymentMethod: order.payment.method.displayName,
-        deliverySlot: order.delivery.slot ? new Date(order.delivery.slot).toLocaleDateString() : null,
-        specialInstructions: order.delivery.specialInstructions
-      }));
+      console.log('Orders API response:', response);
+
+      // Handle the actual API response structure
+      const ordersArray = response.data || response.orders || [];
+
+      const transformedOrders = ordersArray.map((order: any) => {
+        const rawStatus = order.orderStatus || order.status?.current || 'pending';
+        return {
+          id: order.id.toString(),
+          orderNumber: order.orderNumber,
+          storeName: order.store?.name || 'Store',
+          storeImage: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=80&h=80&fit=crop&crop=center',
+          date: new Date(order.createdAt || order.timestamps?.createdAt).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+          }),
+          status: getStatusLabel(rawStatus),
+          statusColor: getStatusColor(rawStatus),
+          totalAmount: `₹${parseFloat(order.totalAmount || order.pricing?.totalAmount || '0').toFixed(0)}`,
+          itemCount: order.itemCount || order.items?.length || 0,
+          paymentStatus: order.paymentStatus || order.payment?.status || 'pending',
+          paymentMethod: order.payment?.method?.displayName || 'Cash on Delivery',
+          deliverySlot: order.deliverySlot || order.delivery?.slot ? new Date(order.deliverySlot || order.delivery?.slot).toLocaleDateString() : null,
+          specialInstructions: order.specialInstructions || order.delivery?.specialInstructions
+        };
+      });
 
       if (page === 1) {
         setOrders(transformedOrders);
       } else {
         setOrders(prev => [...prev, ...transformedOrders]);
       }
-      
-      setPagination(response.pagination);
+
+      // Handle pagination from API response
+      const paginationData = response.pagination || {
+        total: response.pagination?.totalItems || transformedOrders.length,
+        totalItems: response.pagination?.totalItems || transformedOrders.length,
+        page: response.pagination?.page || page,
+        limit: response.pagination?.limit || 10,
+        totalPages: response.pagination?.totalPages || 1,
+        hasMore: response.pagination?.hasMore || false
+      };
+      setPagination(paginationData);
       setCurrentPage(page);
 
     } catch (err) {
@@ -154,7 +185,7 @@ export default function OrdersScreen() {
           <Text style={[styles.headerTitle, { color: colors.text }]}>My Orders</Text>
           {pagination && (
             <Text style={[styles.orderCount, { color: colors.textSecondary }]}>
-              {pagination.total} total order{pagination.total !== 1 ? 's' : ''}
+              {pagination.totalItems || pagination.total || orders.length} total order{(pagination.totalItems || pagination.total || orders.length) !== 1 ? 's' : ''}
             </Text>
           )}
         </View>

@@ -10,6 +10,7 @@ import { useCart } from '@/contexts/CartContext';
 import { ApiService } from '@/services/api';
 import { useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import OrderSplashScreen from '@/components/OrderSplashScreen';
 
 export default function CartScreen() {
   const colorScheme = useAppColorScheme();
@@ -31,6 +32,9 @@ export default function CartScreen() {
     setIsPlacingOrder(true);
 
     try {
+      // Add minimum delay to show splash screen properly
+      const startTime = Date.now();
+
       // Prepare order data according to the API specification
       const orderData = {
         items: cartState.items.map(item => ({
@@ -42,10 +46,18 @@ export default function CartScreen() {
         paymentMethodId: 1 // Default payment method
       };
 
-      const response = await ApiService.orders.placeDeliveryOrder(orderData);
-      
+      const [response] = await Promise.all([
+        ApiService.orders.placeDeliveryOrder(orderData),
+        // Ensure minimum splash screen time of 3.5 seconds
+        new Promise(resolve => {
+          const elapsed = Date.now() - startTime;
+          const remaining = Math.max(3500 - elapsed, 0);
+          setTimeout(resolve, remaining);
+        })
+      ]);
+
       console.log('Order placement response:', response);
-      
+
       // Success - clear cart and navigate to order tracking
       clearCart();
       
@@ -127,9 +139,10 @@ export default function CartScreen() {
       <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
         Add items from stores to get started
       </Text>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.shopButton, { backgroundColor: colors.primary }]}
         activeOpacity={0.8}
+        onPress={() => router.replace('/(tabs)')}
       >
         <Text style={[styles.shopButtonText, { color: colors.textInverse }]}>
           Browse Stores
@@ -140,6 +153,9 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Order Splash Screen */}
+      <OrderSplashScreen visible={isPlacingOrder} />
+
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.divider }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>My Cart</Text>
