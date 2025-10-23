@@ -5,6 +5,7 @@ import { Platform, View, Text } from 'react-native';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
+import CustomTabBar from '@/components/CustomTabBar';
 import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useAppColorScheme } from '@/contexts/ThemeContext';
@@ -17,34 +18,10 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.tabIconDefault,
         headerShown: false,
         headerTitle: '',
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            position: 'absolute',
-            backgroundColor: colors.background,
-            borderTopColor: colors.border,
-            borderTopWidth: 0.5,
-            height: Layout.tabBar.height + 10,
-            paddingBottom: 10,
-          },
-          default: {
-            backgroundColor: colors.background,
-            borderTopColor: colors.border,
-            borderTopWidth: 0.5,
-            height: Layout.tabBar.height,
-          },
-        }),
-        tabBarLabelStyle: {
-          fontSize: Layout.tabBar.labelSize,
-          fontWeight: '600',
-          marginTop: -2,
-        },
       }}>
       <Tabs.Screen
         name="index"

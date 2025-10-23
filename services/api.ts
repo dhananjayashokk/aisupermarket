@@ -111,6 +111,27 @@ export const ApiService = {
       );
       return handleResponse(response);
     },
+
+    // Get previously bought products for a customer in a store
+    getPreviouslyBought: async (params: {
+      storeId: number;
+      page?: number;
+      limit?: number;
+      sortBy?: 'last_purchased' | 'frequency' | 'name';
+    }) => {
+      const searchParams = new URLSearchParams();
+      searchParams.append("page", (params.page || 1).toString());
+      searchParams.append("limit", (params.limit || 10).toString());
+      searchParams.append("sortBy", params.sortBy || "last_purchased");
+
+      const response = await fetch(
+        `${API_BASE_URL}/customer/stores/${params.storeId}/purchased-products?${searchParams}`,
+        {
+          headers: await getAuthHeaders(),
+        }
+      );
+      return handleResponse(response);
+    },
   },
 
   // Orders API - Using existing POS endpoints

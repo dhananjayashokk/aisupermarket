@@ -1,3 +1,5 @@
+import StoreFiltersBar from "@/components/StoreFiltersBar";
+import StoreSearchBar from "@/components/StoreSearchBar";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { Layout, Spacing } from "@/constants/Layout";
@@ -23,10 +25,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 // Helper function to get product images from API
 const getProductImage = (imageUrl?: string) => {
   // Use the image_url from API if it exists
-  if (imageUrl && imageUrl.trim() !== '') {
+  if (imageUrl && imageUrl.trim() !== "") {
     // Replace 127.0.0.1 with localhost for better browser compatibility
-    const normalizedUrl = imageUrl.replace('127.0.0.1', 'localhost');
-    console.log('Image URL normalized:', normalizedUrl);
+    const normalizedUrl = imageUrl.replace("127.0.0.1", "localhost");
+    console.log("Image URL normalized:", normalizedUrl);
     return { source: { uri: normalizedUrl }, exists: true };
   }
 
@@ -75,7 +77,20 @@ export default function StoreDetailScreen() {
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
-  const [imageLoadErrors, setImageLoadErrors] = useState<Set<number>>(new Set());
+  const [imageLoadErrors, setImageLoadErrors] = useState<Set<number>>(
+    new Set()
+  );
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [previouslyBoughtProducts, setPreviouslyBoughtProducts] = useState<
+    any[]
+  >([]);
+  const [loadingPreviouslyBought, setLoadingPreviouslyBought] = useState(false);
+  const [previouslyBoughtSortBy, setPreviouslyBoughtSortBy] = useState<
+    "last_purchased" | "frequency" | "name"
+  >("last_purchased");
+  const [previouslyBoughtPage, setPreviouslyBoughtPage] = useState(1);
+  const [previouslyBoughtTotal, setPreviouslyBoughtTotal] = useState(0);
 
   // Fetch products for this store
   useEffect(() => {
@@ -83,6 +98,16 @@ export default function StoreDetailScreen() {
       fetchStoreProducts();
     }
   }, [id]);
+
+  // Fetch previously bought products when category is selected
+  useEffect(() => {
+    if (
+      selectedCategory === "previously_bought" &&
+      previouslyBoughtProducts.length === 0
+    ) {
+      fetchPreviouslyBought(1, previouslyBoughtSortBy);
+    }
+  }, [selectedCategory]);
 
   const fetchStoreProducts = async () => {
     try {
@@ -140,6 +165,68 @@ export default function StoreDetailScreen() {
     }
   };
 
+  // Fetch previously bought products
+  const fetchPreviouslyBought = async (
+    page = 1,
+    sortBy = previouslyBoughtSortBy
+  ) => {
+    try {
+      setLoadingPreviouslyBought(true);
+      const response = await ApiService.products.getPreviouslyBought({
+        storeId: parseInt(id as string),
+        page,
+        limit: 20,
+        sortBy,
+      });
+
+      if (response.success && response.data) {
+        console.log("Previously bought products:", response.data.length);
+
+        // Transform the data to match our product format
+        const transformedProducts = response.data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          price: item.currentPrice,
+          mrp: item.mrp,
+          image_url: item.image,
+          categoryName: item.category?.name,
+          unit: item.hasVariants ? "variant" : "piece",
+          brand: item.brand,
+          isAvailable: item.isAvailable,
+          // Purchase history data
+          purchaseHistory: {
+            lastPurchased: item.purchaseHistory.lastPurchased,
+            totalQuantity: item.purchaseHistory.totalQuantity,
+            purchaseCount: item.purchaseHistory.purchaseCount,
+            avgPurchasePrice: item.avgPurchasePrice,
+          },
+          // Additional fields for UI
+          isPreviouslyBought: true,
+        }));
+
+        if (page === 1) {
+          setPreviouslyBoughtProducts(transformedProducts);
+        } else {
+          setPreviouslyBoughtProducts((prev) => [
+            ...prev,
+            ...transformedProducts,
+          ]);
+        }
+
+        setPreviouslyBoughtTotal(
+          response.pagination?.total || transformedProducts.length
+        );
+        setPreviouslyBoughtPage(page);
+        setPreviouslyBoughtSortBy(sortBy);
+      }
+    } catch (error) {
+      console.error("Error fetching previously bought products:", error);
+    } finally {
+      setLoadingPreviouslyBought(false);
+    }
+  };
+
   // Helper function to get category icons
   const getCategoryIcon = (categoryName: string) => {
     const iconMap: { [key: string]: string } = {
@@ -148,6 +235,11 @@ export default function StoreDetailScreen() {
       "dairy & bakery": "🥛",
       bakery: "🍞",
       snacks: "🍿",
+      "chips & wafers": "🥔",
+      "bhujia & mixtures": "🥜",
+      "namkeen snacks": "🥨",
+      nachos: "🌮",
+      "healthy snacks": "🥗",
       groceries: "🛒",
       "groceries & staples": "🛒",
       staples: "🌾",
@@ -182,11 +274,27 @@ export default function StoreDetailScreen() {
     deliveryFee: 20,
   };
 
-  // Filter products by category
+  // Filter products by category and search query
   const filteredProducts =
-    selectedCategory === "all"
-      ? products
-      : products.filter((p) => p.categoryName === selectedCategory);
+    selectedCategory === "previously_bought"
+      ? previouslyBoughtProducts.filter((p) => {
+          const matchesSearch =
+            !searchQuery ||
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (p.description &&
+              p.description.toLowerCase().includes(searchQuery.toLowerCase()));
+          return matchesSearch;
+        })
+      : products.filter((p) => {
+          const matchesCategory =
+            selectedCategory === "all" || p.categoryName === selectedCategory;
+          const matchesSearch =
+            !searchQuery ||
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (p.description &&
+              p.description.toLowerCase().includes(searchQuery.toLowerCase()));
+          return matchesCategory && matchesSearch;
+        });
 
   const storeCategories = [
     { id: "all", name: "All Items", icon: "🛒" },
@@ -255,30 +363,53 @@ export default function StoreDetailScreen() {
   };
 
   const handleImageError = (productId: number) => {
-    setImageLoadErrors(prev => new Set(prev).add(productId));
+    setImageLoadErrors((prev) => new Set(prev).add(productId));
   };
 
-  const renderProduct = ({ item }: { item: any }) => {
+  const renderProduct = ({
+    item,
+    showOptions = false,
+  }: {
+    item: any;
+    showOptions?: boolean;
+  }) => {
     const quantity = getItemQuantity(item.id);
     const imageInfo = getProductImage(item.image_url);
     const hasImageError = imageLoadErrors.has(item.id);
+    const isBestseller = item.isBestseller || Math.random() > 0.7; // Mock bestseller status
+    const hasDiscount =
+      item.discount ||
+      (item.mrp && parseFloat(item.mrp) > parseFloat(item.price));
 
-    // Debug: Log product structure to see variant info
-    if (item.formattedVariantAttributes || item.variantCombination) {
-      console.log("Product with variant:", item.name);
-      console.log(
-        "- formattedVariantAttributes:",
-        item.formattedVariantAttributes
+    // Format purchase history info
+    const formatLastPurchased = (dateString: string) => {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffInDays = Math.floor(
+        (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
       );
-      console.log("- variantCombination:", item.variantCombination);
-      console.log("- Formatted result:", formatVariantAttributes(item));
-    }
+
+      if (diffInDays === 0) return "Today";
+      if (diffInDays === 1) return "Yesterday";
+      if (diffInDays < 7) return `${diffInDays} days ago`;
+      if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+      return `${Math.floor(diffInDays / 30)} months ago`;
+    };
 
     return (
       <TouchableOpacity
-        style={[styles.productCard, { backgroundColor: colors.surface }]}
+        style={[
+          styles.productCard,
+          {
+            backgroundColor: colors.surface,
+            opacity: item.isAvailable === false ? 0.6 : 1,
+          },
+        ]}
         activeOpacity={0.8}
-        onPress={() => router.push(`/product/${item.id}`)}
+        onPress={() =>
+          item.isAvailable !== false && router.push(`/product/${item.id}`)
+        }
+        disabled={item.isAvailable === false}
         delayPressIn={Platform.OS === "web" ? 150 : 0}
         delayPressOut={Platform.OS === "web" ? 150 : 0}
         {...Platform.select({
@@ -289,6 +420,20 @@ export default function StoreDetailScreen() {
           },
         })}
       >
+        {/* Bestseller Badge */}
+        {isBestseller && (
+          <View
+            style={[
+              styles.bestsellerBadge,
+              { backgroundColor: colors.warning },
+            ]}
+          >
+            <Text style={[styles.bestsellerText, { color: colors.text }]}>
+              Bestseller
+            </Text>
+          </View>
+        )}
+
         {imageInfo.exists && !hasImageError ? (
           <Image
             source={imageInfo.source}
@@ -296,7 +441,7 @@ export default function StoreDetailScreen() {
             onError={(error) => {
               console.error(`Failed to load image for ${item.name}:`, {
                 url: item.image_url,
-                error: error.nativeEvent
+                error: error.nativeEvent,
               });
               handleImageError(item.id);
             }}
@@ -323,16 +468,6 @@ export default function StoreDetailScreen() {
           </View>
         )}
 
-        {item.discount && (
-          <View
-            style={[styles.discountBadge, { backgroundColor: colors.discount }]}
-          >
-            <Text style={[styles.discountText, { color: colors.textInverse }]}>
-              {item.discount}% OFF
-            </Text>
-          </View>
-        )}
-
         <View style={styles.productInfo}>
           <Text style={[styles.productName, { color: colors.text }]}>
             {item.name}
@@ -344,6 +479,26 @@ export default function StoreDetailScreen() {
               {formatVariantAttributes(item)}
             </Text>
           )}
+
+          {/* Show purchase history for previously bought items */}
+          {item.isPreviouslyBought && item.purchaseHistory && (
+            <View style={styles.purchaseHistoryContainer}>
+              <Text
+                style={[styles.purchaseHistoryText, { color: colors.primary }]}
+              >
+                🕐 {formatLastPurchased(item.purchaseHistory.lastPurchased)}
+              </Text>
+              <Text
+                style={[
+                  styles.purchaseHistoryText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Bought {item.purchaseHistory.purchaseCount}x
+              </Text>
+            </View>
+          )}
+
           <Text style={[styles.productUnit, { color: colors.textSecondary }]}>
             {item.unit || "piece"}
           </Text>
@@ -368,21 +523,39 @@ export default function StoreDetailScreen() {
           <View style={styles.productFooter}>
             {quantity === 0 ? (
               <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: colors.primary }]}
+                style={[
+                  styles.addButton,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.success,
+                    borderWidth: 1.5,
+                  },
+                ]}
                 activeOpacity={0.8}
                 onPress={() => handleAddToCart(item)}
               >
-                <Text style={[styles.addButtonText, { color: colors.textInverse }]}>
+                <Text style={[styles.addButtonText, { color: colors.success }]}>
                   ADD
                 </Text>
+                {showOptions && (
+                  <Text
+                    style={[styles.optionsText, { color: colors.textTertiary }]}
+                  >
+                    {item.options || "2 options"}
+                  </Text>
+                )}
               </TouchableOpacity>
             ) : (
-              <View style={styles.quantityControls}>
+              <View
+                style={[
+                  styles.quantityControls,
+                  {
+                    backgroundColor: colors.success,
+                  },
+                ]}
+              >
                 <TouchableOpacity
-                  style={[
-                    styles.quantityButton,
-                    { backgroundColor: colors.primary },
-                  ]}
+                  style={styles.quantityButton}
                   onPress={() => updateQuantity(item.id, quantity - 1)}
                   activeOpacity={0.8}
                 >
@@ -393,15 +566,14 @@ export default function StoreDetailScreen() {
                   />
                 </TouchableOpacity>
 
-                <Text style={[styles.quantityText, { color: colors.text }]}>
+                <Text
+                  style={[styles.quantityText, { color: colors.textInverse }]}
+                >
                   {quantity}
                 </Text>
 
                 <TouchableOpacity
-                  style={[
-                    styles.quantityButton,
-                    { backgroundColor: colors.primary },
-                  ]}
+                  style={styles.quantityButton}
                   onPress={() => updateQuantity(item.id, quantity + 1)}
                   activeOpacity={0.8}
                 >
@@ -434,53 +606,78 @@ export default function StoreDetailScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.divider,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => {
-            console.log("Back button pressed on store page");
-            try {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                // Fallback to home if no history
-                router.push("/(tabs)/");
-              }
-            } catch (error) {
-              console.error("Navigation error:", error);
-              router.push("/(tabs)/");
-            }
-          }}
-          activeOpacity={0.7}
-        >
-          <IconSymbol name="arrow.left" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerInfo}>
-          <Text
-            style={[styles.headerTitle, { color: colors.text }]}
-            numberOfLines={1}
+      {/* Search Bar or Regular Header */}
+      {showSearch ? (
+        <StoreSearchBar
+          onSearch={(query) => setSearchQuery(query)}
+          onClose={() => setShowSearch(false)}
+          placeholder="Search for atta, dal, coke and more"
+        />
+      ) : (
+        <>
+          {/* Header */}
+          <View
+            style={[
+              styles.header,
+              {
+                backgroundColor: colors.background,
+                borderBottomColor: colors.divider,
+              },
+            ]}
           >
-            {store.name}
-          </Text>
-          <Text
-            style={[styles.headerSubtitle, { color: colors.textSecondary }]}
-          >
-            {store.deliveryTime} • ₹{store.deliveryFee} delivery
-          </Text>
-        </View>
-        <TouchableOpacity style={styles.searchButton}>
-          <IconSymbol name="magnifyingglass" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => {
+                console.log("Back button pressed on store page");
+                try {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    // Fallback to home if no history
+                    router.push("/(tabs)/");
+                  }
+                } catch (error) {
+                  console.error("Navigation error:", error);
+                  router.push("/(tabs)/");
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <IconSymbol name="arrow.left" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <View style={styles.headerInfo}>
+              <Text
+                style={[styles.headerTitle, { color: colors.text }]}
+                numberOfLines={1}
+              >
+                {store.name}
+              </Text>
+              <Text
+                style={[styles.headerSubtitle, { color: colors.textSecondary }]}
+              >
+                {store.deliveryTime} • ₹{store.deliveryFee} delivery
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.searchButton}
+              onPress={() => setShowSearch(true)}
+            >
+              <IconSymbol
+                name="magnifyingglass"
+                size={24}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Filters Bar */}
+          <StoreFiltersBar
+            onFilterPress={() => console.log("Filters pressed")}
+            onSortPress={() => console.log("Sort pressed")}
+            onBrandPress={() => console.log("Brand pressed")}
+          />
+        </>
+      )}
 
       {/* Main Content Area with Fixed Sidebar Layout */}
       <View style={styles.mainContent}>
@@ -498,6 +695,48 @@ export default function StoreDetailScreen() {
             showsVerticalScrollIndicator={false}
             style={styles.categoriesList}
           >
+            {/* Previously Bought Section */}
+            <TouchableOpacity
+              style={[
+                styles.previouslyBoughtItem,
+                {
+                  borderLeftColor:
+                    selectedCategory === "previously_bought"
+                      ? colors.success
+                      : "transparent",
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => setSelectedCategory("previously_bought")}
+            >
+              <View
+                style={[
+                  styles.previouslyBoughtIcon,
+                  { backgroundColor: colors.success + "15" },
+                ]}
+              >
+                <IconSymbol name="cart" size={18} color={colors.success} />
+              </View>
+              <Text
+                style={[
+                  styles.previouslyBoughtText,
+                  {
+                    color:
+                      selectedCategory === "previously_bought"
+                        ? colors.success
+                        : colors.text,
+                    fontWeight:
+                      selectedCategory === "previously_bought"
+                        ? Typography.fontWeight.semibold
+                        : Typography.fontWeight.medium,
+                  },
+                ]}
+              >
+                Previously{"\n"}Bought
+              </Text>
+            </TouchableOpacity>
+
+            {/* Category Items */}
             {loadingProducts ? (
               // Skeleton loader for categories
               <>
@@ -518,12 +757,7 @@ export default function StoreDetailScreen() {
                   style={[
                     styles.categoryItem,
                     {
-                      backgroundColor:
-                        selectedCategory === item.id ||
-                        selectedCategory === item.name
-                          ? colors.primary + "20"
-                          : "transparent",
-                      borderColor:
+                      borderLeftColor:
                         selectedCategory === item.id ||
                         selectedCategory === item.name
                           ? colors.primary
@@ -535,7 +769,20 @@ export default function StoreDetailScreen() {
                   }
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.categoryIcon}>{item.icon}</Text>
+                  <View
+                    style={[
+                      styles.categoryIcon,
+                      {
+                        backgroundColor:
+                          selectedCategory === item.id ||
+                          selectedCategory === item.name
+                            ? colors.primary + "15"
+                            : colors.background,
+                      },
+                    ]}
+                  >
+                    <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+                  </View>
                   <Text
                     style={[
                       styles.categoryName,
@@ -544,7 +791,7 @@ export default function StoreDetailScreen() {
                           selectedCategory === item.id ||
                           selectedCategory === item.name
                             ? colors.primary
-                            : colors.text,
+                            : colors.textSecondary,
                         fontWeight:
                           selectedCategory === item.id ||
                           selectedCategory === item.name
@@ -576,22 +823,63 @@ export default function StoreDetailScreen() {
             }
           >
             <View style={styles.productsHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {selectedCategory === "all" ? "All Products" : selectedCategory}
-              </Text>
-              <Text
-                style={[styles.productCount, { color: colors.textSecondary }]}
-              >
-                {filteredProducts.length} items
-              </Text>
+              <View style={styles.headerLeft}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  {selectedCategory === "all"
+                    ? "All Products"
+                    : selectedCategory === "previously_bought"
+                    ? "Previously Bought"
+                    : selectedCategory}
+                </Text>
+                <Text
+                  style={[styles.productCount, { color: colors.textSecondary }]}
+                >
+                  {filteredProducts.length} items
+                </Text>
+              </View>
+
+              {/* Sorting dropdown for Previously Bought */}
+              {selectedCategory === "previously_bought" && (
+                <View style={styles.sortingContainer}>
+                  <TouchableOpacity
+                    style={[styles.sortButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      // Cycle through sort options
+                      const sortOptions: Array<'last_purchased' | 'frequency' | 'name'> = ['last_purchased', 'frequency', 'name'];
+                      const currentIndex = sortOptions.indexOf(previouslyBoughtSortBy);
+                      const nextIndex = (currentIndex + 1) % sortOptions.length;
+                      const nextSort = sortOptions[nextIndex];
+                      fetchPreviouslyBought(1, nextSort);
+                    }}
+                  >
+                    <IconSymbol name="arrow.up.arrow.down" size={14} color={colors.primary} />
+                    <Text style={[styles.sortButtonText, { color: colors.primary }]}>
+                      {previouslyBoughtSortBy === 'last_purchased' && 'Recent'}
+                      {previouslyBoughtSortBy === 'frequency' && 'Most Bought'}
+                      {previouslyBoughtSortBy === 'name' && 'A-Z'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
-            {loadingProducts ? (
+            {(selectedCategory === "previously_bought" ? loadingPreviouslyBought : loadingProducts) ? (
               <View style={styles.loadingContainer}>
                 <Text
                   style={[styles.loadingText, { color: colors.textSecondary }]}
                 >
-                  Loading products...
+                  {selectedCategory === "previously_bought"
+                    ? "Loading your previously bought items..."
+                    : "Loading products..."}
+                </Text>
+              </View>
+            ) : filteredProducts.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  {selectedCategory === "previously_bought"
+                    ? "No previously bought items found"
+                    : "No products found in this category"}
                 </Text>
               </View>
             ) : (
@@ -670,45 +958,77 @@ const styles = StyleSheet.create({
   searchButton: {
     padding: Spacing.xs,
   },
+  previouslyBoughtItem: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
+    marginHorizontal: Spacing.xs,
+    marginBottom: Spacing.xs,
+    borderLeftWidth: 3,
+    borderLeftColor: "transparent",
+    minHeight: 70,
+  },
+  previouslyBoughtIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.xs,
+  },
+  previouslyBoughtText: {
+    ...TextStyles.caption,
+    fontSize: 11,
+    textAlign: "center",
+    lineHeight: 13,
+    fontWeight: Typography.fontWeight.medium,
+    maxWidth: 70,
+  },
   // New Sidebar Layout Styles
   mainContent: {
     flexDirection: "row",
     flex: 1,
   },
   categoriesSidebar: {
-    width: 100,
+    width: 90,
     borderRightWidth: 1,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   categoriesList: {
     flex: 1,
   },
   categoryItem: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.xs,
-    paddingVertical: Spacing.xs,
-    marginHorizontal: 4,
-    marginBottom: Spacing.xs,
-    borderRadius: Layout.borderRadius.sm,
-    borderWidth: 1,
-    minHeight: 40,
+    marginHorizontal: Spacing.xs,
+    borderLeftWidth: 3,
+    borderLeftColor: "transparent",
+    minHeight: 70,
   },
   categoryIcon: {
-    fontSize: 14,
-    marginRight: 6,
-    width: 18,
-    textAlign: "center",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.xs,
   },
   categoryName: {
-    ...TextStyles.bodySmall,
-    fontSize: Typography.fontSize.xs,
-    flex: 1,
-    lineHeight: 14,
+    ...TextStyles.caption,
+    fontSize: 11,
+    textAlign: "center",
+    lineHeight: 13,
+    maxWidth: 70,
   },
   categoryItemSkeleton: {
-    height: 40,
-    marginHorizontal: 4,
+    height: 70,
+    marginHorizontal: Spacing.xs,
     marginBottom: Spacing.xs,
     borderRadius: Layout.borderRadius.sm,
     opacity: 0.3,
@@ -752,6 +1072,7 @@ const styles = StyleSheet.create({
     padding: Layout.productCard.padding,
     marginBottom: Spacing.md,
     ...Layout.shadow.sm,
+    position: "relative",
     ...Platform.select({
       web: {
         cursor: "pointer",
@@ -762,6 +1083,20 @@ const styles = StyleSheet.create({
         WebkitTapHighlightColor: "transparent",
       },
     }),
+  },
+  bestsellerBadge: {
+    position: "absolute",
+    top: Spacing.xs,
+    left: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Layout.borderRadius.xs,
+    zIndex: 1,
+  },
+  bestsellerText: {
+    ...TextStyles.caption,
+    fontSize: 10,
+    fontWeight: Typography.fontWeight.bold,
   },
   productImage: {
     width: "100%",
@@ -796,7 +1131,7 @@ const styles = StyleSheet.create({
   productInfo: {
     flex: 1,
     minHeight: 140,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   productName: {
     ...TextStyles.body,
@@ -828,7 +1163,7 @@ const styles = StyleSheet.create({
   priceContainer: {
     marginBottom: Spacing.sm,
     minHeight: 40,
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
   },
   productPrice: {
     ...TextStyles.priceSmall,
@@ -840,36 +1175,53 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
     marginBottom: Spacing.xxs,
   },
+  deliveryInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: Spacing.sm,
+  },
+  deliveryText: {
+    ...TextStyles.caption,
+    fontSize: 10,
+    fontWeight: Typography.fontWeight.semibold,
+  },
   addButton: {
-    width: 80,
+    width: "100%",
     height: 32,
-    borderRadius: 16,
+    borderRadius: Layout.borderRadius.sm,
     justifyContent: "center",
     alignItems: "center",
-    flexDirection: "row",
+    flexDirection: "column",
   },
   addButtonText: {
     ...TextStyles.bodySmall,
     fontWeight: Typography.fontWeight.bold,
     letterSpacing: 0.5,
   },
+  optionsText: {
+    ...TextStyles.caption,
+    fontSize: 9,
+    marginTop: 2,
+  },
   quantityControls: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "transparent",
+    borderRadius: Layout.borderRadius.sm,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 4,
     flexShrink: 0,
   },
   quantityButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
     justifyContent: "center",
     alignItems: "center",
   },
   quantityText: {
     ...TextStyles.bodySmall,
-    fontWeight: Typography.fontWeight.semibold,
-    marginHorizontal: Spacing.xs,
+    fontWeight: Typography.fontWeight.bold,
+    marginHorizontal: Spacing.sm,
     minWidth: 16,
     textAlign: "center",
   },
@@ -927,5 +1279,43 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontSize: 32,
+  },
+  purchaseHistoryContainer: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginVertical: Spacing.xs,
+  },
+  purchaseHistoryText: {
+    ...TextStyles.caption,
+    fontSize: 11,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  sortingContainer: {
+    justifyContent: "center",
+  },
+  sortButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Layout.borderRadius.sm,
+    borderWidth: 1,
+    gap: Spacing.xs,
+  },
+  sortButtonText: {
+    ...TextStyles.bodySmall,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: Spacing.xxxl,
+  },
+  emptyText: {
+    ...TextStyles.body,
+    textAlign: "center",
   },
 });
