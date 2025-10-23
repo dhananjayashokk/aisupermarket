@@ -1,4 +1,3 @@
-import StoreFiltersBar from "@/components/StoreFiltersBar";
 import StoreSearchBar from "@/components/StoreSearchBar";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
@@ -610,7 +609,10 @@ export default function StoreDetailScreen() {
       {showSearch ? (
         <StoreSearchBar
           onSearch={(query) => setSearchQuery(query)}
-          onClose={() => setShowSearch(false)}
+          onClose={() => {
+            setShowSearch(false);
+            setSearchQuery('');
+          }}
           placeholder="Search for atta, dal, coke and more"
         />
       ) : (
@@ -669,13 +671,6 @@ export default function StoreDetailScreen() {
               />
             </TouchableOpacity>
           </View>
-
-          {/* Filters Bar */}
-          <StoreFiltersBar
-            onFilterPress={() => console.log("Filters pressed")}
-            onSortPress={() => console.log("Sort pressed")}
-            onBrandPress={() => console.log("Brand pressed")}
-          />
         </>
       )}
 
@@ -971,20 +966,20 @@ const styles = StyleSheet.create({
     minHeight: 70,
   },
   previouslyBoughtIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: Spacing.xs,
   },
   previouslyBoughtText: {
     ...TextStyles.caption,
-    fontSize: 11,
+    fontSize: 10,
     textAlign: "center",
-    lineHeight: 13,
+    lineHeight: 12,
     fontWeight: Typography.fontWeight.medium,
-    maxWidth: 70,
+    maxWidth: 65,
   },
   // New Sidebar Layout Styles
   mainContent: {
@@ -992,7 +987,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoriesSidebar: {
-    width: 90,
+    width: 80,
     borderRightWidth: 1,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.md,
@@ -1012,19 +1007,19 @@ const styles = StyleSheet.create({
     minHeight: 70,
   },
   categoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: Spacing.xs,
   },
   categoryName: {
     ...TextStyles.caption,
-    fontSize: 11,
+    fontSize: 10,
     textAlign: "center",
-    lineHeight: 13,
-    maxWidth: 70,
+    lineHeight: 12,
+    maxWidth: 65,
   },
   categoryItemSkeleton: {
     height: 70,
