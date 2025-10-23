@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, Alert } from 'react-native';
+import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Image, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -22,6 +22,9 @@ export default function CartScreen() {
   const subtotal = cartState.totalAmount;
   const savings = 0; // We don't have original price data in our cart context
   const total = subtotal + deliveryFee;
+
+  // Get store ID from first item in cart (assuming all items are from same store)
+  const storeId = cartState.items[0]?.storeId || '1';
 
   const handlePlaceOrder = async () => {
     if (cartState.items.length === 0) {
@@ -152,7 +155,7 @@ export default function CartScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Order Splash Screen */}
       <OrderSplashScreen visible={isPlacingOrder} />
 
@@ -165,9 +168,9 @@ export default function CartScreen() {
       </View>
 
       {cartState.items.length === 0 ? getEmptyCart() : (
-        <>
+        <View style={styles.contentWrapper}>
           {/* Cart Items */}
-          <ScrollView 
+          <ScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
@@ -273,9 +276,10 @@ export default function CartScreen() {
             </View>
 
             {/* Add more items suggestion */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.addMoreButton, { borderColor: colors.primary }]}
               activeOpacity={0.7}
+              onPress={() => router.push(`/store/${storeId}`)}
             >
               <IconSymbol name="plus.circle" size={20} color={colors.primary} />
               <Text style={[styles.addMoreText, { color: colors.primary }]}>
@@ -285,10 +289,10 @@ export default function CartScreen() {
           </ScrollView>
 
           {/* Checkout Button */}
-          <View style={[styles.checkoutContainer, { 
+          <View style={[styles.checkoutContainer, {
             backgroundColor: colors.background,
             borderTopColor: colors.divider,
-            ...Layout.shadow.lg 
+            ...Layout.shadow.lg
           }]}>
             <View style={styles.checkoutInfo}>
               <Text style={[styles.checkoutTotal, { color: colors.text }]}>
@@ -315,15 +319,16 @@ export default function CartScreen() {
               )}
             </TouchableOpacity>
           </View>
-        </>
+        </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    height: Platform.OS === 'web' ? '100vh' : undefined,
   },
   header: {
     flexDirection: 'row',
@@ -339,11 +344,14 @@ const styles = StyleSheet.create({
   itemCount: {
     ...TextStyles.body,
   },
+  contentWrapper: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Spacing.xxxl,
+    paddingBottom: Platform.OS === 'web' ? 200 : 100, // Extra padding for button + tab bar
   },
   storeInfo: {
     flexDirection: 'row',
@@ -487,7 +495,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: Spacing.lg,
+    paddingBottom: Platform.OS === 'web' ? Spacing.lg : Spacing.xl,
     borderTopWidth: 1,
+    minHeight: 80,
+    ...(Platform.OS === 'web' ? {
+      position: 'fixed' as any,
+      bottom: 80, // Above tab bar (increased from 60)
+      left: 0,
+      right: 0,
+      zIndex: 100,
+    } : {}),
   },
   checkoutInfo: {
     flex: 1,
