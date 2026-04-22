@@ -1,117 +1,95 @@
-# AiSupermart - Project Context for Claude
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-AiSupermart is an Indian supermarket aggregator mobile app built with React Native and Expo. The app allows users to browse and order from multiple local supermarkets with features similar to Blinkit/Instamart.
+AiSupermart (package name: `gogenie`) is an Indian supermarket aggregator mobile app built with React Native and Expo. It connects to a `retail-sass` backend API. The app supports phone number-based authentication (no OTP in primary flow — uses `authenticateWithMobile` which auto-registers or logs in).
 
-## Tech Stack
-- **Framework**: React Native with Expo SDK 53
-- **Navigation**: expo-router (file-based routing)
-- **Styling**: StyleSheet with theme support (light/dark modes)
-- **State Management**: React Context + Hooks
-- **TypeScript**: Enabled for type safety
-
-## Design Philosophy
-- **Indian Market Aesthetic**: Warm colors inspired by local markets
-- **Minimal & Modern**: Clean UI with focus on usability
-- **Performance First**: Optimized for fast loading on all devices
-- **Theme Support**: Complete dark/light mode implementation
-
-## Color Palette
-### Brand Colors - Kerala Green Inspired
-- Primary Kerala Green: #2E7D32 (Light) / #4CAF50 (Dark) - Represents Kerala's lush forests
-- Secondary Coral: #FF8A65 (Light) / #FFAB91 (Dark) - Complements the green beautifully  
-- Bright Yellow: #FFD54F (Light) / #FFE082 (Dark) - Accent color for highlights
-
-## Key Features
-1. Phone number authentication with OTP
-2. Location-based store discovery
-3. Category-wise product browsing
-4. Real-time cart management
-5. Order tracking with map view
-6. Multiple payment options
-7. Order history and reorder
-8. Dark/light theme support
-
-## Current Implementation Status
-- Basic Expo project structure set up
-- Tab navigation configured
-- Theme system partially implemented
-- Mock data structure defined
-
-## Development Guidelines
-1. **Always maintain theme consistency** - Every component should support both themes
-2. **Use TypeScript strictly** - No 'any' types unless absolutely necessary
-3. **Follow component composition** - Small, reusable components
-4. **Optimize images** - Use appropriate sizes and lazy loading
-5. **Test on both iOS and Android** - Ensure cross-platform compatibility
-6. **Use Indian context** - Prices in ₹, Indian phone formats, local store names
-7. **Implement proper loading states** - Never show blank screens
-8. **Handle errors gracefully** - User-friendly error messages
-
-## File Naming Conventions
-- **Screens**: PascalCase (e.g., `HomeScreen.tsx`)
-- **Components**: PascalCase (e.g., `ProductCard.tsx`)
-- **Utilities**: camelCase (e.g., `formatPrice.ts`)
-- **Constants**: UPPER_SNAKE_CASE for values, PascalCase for files
-- **Hooks**: camelCase starting with 'use' (e.g., `useCart.ts`)
-
-## Testing Approach
-- Test critical user flows
-- Ensure theme switching works smoothly
-- Verify cart calculations
-- Test on different screen sizes
-- Check offline behavior
-
-## Performance Targets
-- App launch: < 2 seconds
-- Screen transitions: < 300ms
-- Image loading: Progressive with placeholders
-- Search results: < 500ms
-- Cart updates: Instant (optimistic updates)
-
-## Accessibility Requirements
-- Minimum touch target: 44x44 points
-- Color contrast: WCAG AA compliance
-- Screen reader support
-- Font scaling support
-- RTL language ready (future)
-
-## API Structure (Mocked)
-All API responses follow this structure:
-```typescript
-{
-  success: boolean;
-  data: T;
-  message?: string;
-  error?: string;
-}
-```
-
-## Important Notes
-- Currently using mock data (no real backend)
-- All images are placeholders
-- Prices are in Indian Rupees (₹)
-- Delivery times are simulated
-- Map functionality requires additional setup
-
-## Next Steps Priority
-1. Complete theme implementation
-2. Build core screens (Home, Store, Products, Cart)
-3. Implement cart state management
-4. Add authentication flow
-5. Create order tracking
-6. Polish UI and animations
-
-## Common Commands
+## Commands
 ```bash
-npm start          # Start Expo development server
+npm start          # Start Expo dev server (interactive)
 npm run ios        # Run on iOS simulator
 npm run android    # Run on Android emulator
-npm run web        # Run in web browser
-npm run lint       # Run ESLint
+npm run web        # Run in browser
+npm run lint       # Run ESLint (expo lint)
 ```
 
-## Useful Resources
-- Expo Router Docs: https://docs.expo.dev/router/introduction/
-- React Native: https://reactnative.dev/docs/getting-started
-- Indian UX Patterns: Consider local payment methods, phone-first auth
+There are no automated tests in this project.
+
+## Environment Setup
+Copy `.env.example` to `.env` and fill in values:
+- `EXPO_PUBLIC_API_URL` — base URL for the retail-sass backend (e.g. `http://localhost:3000/api`)
+- `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` — Supabase credentials (used in `services/supabase.ts`)
+
+All `EXPO_PUBLIC_*` vars are inlined at build time and accessible via `process.env.EXPO_PUBLIC_*`.
+
+## Architecture
+
+### Navigation (expo-router file-based)
+- `app/_layout.tsx` — root layout; wraps app in `ThemeProvider > AuthProvider > CartProvider`; conditionally renders auth stack vs main stack based on `AuthContext.state.isAuthenticated`
+- `app/(tabs)/` — main tab navigator (Home, Orders, Cart, Profile); uses `CustomTabBar`
+- `app/auth/` — login, OTP, onboarding screens (shown when unauthenticated)
+- `app/store/[id].tsx`, `app/product/[id].tsx`, `app/category/[id].tsx`, `app/order/[id].tsx` — dynamic detail screens
+
+### State Management (React Context)
+Three contexts, all provided in root layout:
+
+1. **`ThemeContext`** (`contexts/ThemeContext.tsx`) — manages `light`/`dark`/`system` preference. Use `useAppColorScheme()` to get the resolved `'light' | 'dark'` value. Theme preference is in-memory only (not persisted to AsyncStorage yet).
+
+2. **`AuthContext`** (`contexts/AuthContext.tsx`) — manages auth state. Primary auth method is `authenticateWithMobile(phone, name?)` which calls `POST /customer/auth/mobile`. Persists user/tokens in AsyncStorage. Also has legacy `sendOTP`/`verifyOTP` methods (deprecated). On app start, restores session from AsyncStorage.
+
+3. **`CartContext`** (`contexts/CartContext.tsx`) — manages cart items using `useReducer`. In-memory only (no persistence). Cart items carry `storeId`/`storeName` — cart is not scoped per-store in the reducer, so mixed-store carts are technically possible.
+
+### API Layer (`services/api.ts`)
+- `ApiService` — namespaced fetch wrappers for `stores`, `products`, `orders`, `customer` endpoints
+- `GoGenieAPI` — higher-level helpers: `transformProductsForMobile()`, `getMobileProducts()`, `placeMobileOrder()`
+- Auth header helper reads `accessToken` from AsyncStorage and injects `Authorization: Bearer` header
+- Two base URL patterns: `API_BASE_URL` (e.g. `/api`) and `MOBILE_API_BASE_URL` (e.g. `/api/mobile`)
+
+### Supabase Realtime (`services/supabase.ts`)
+Used exclusively for live order status updates. The main REST API is the retail-sass backend; Supabase is only for realtime.
+- `subscribeToOrder(orderId, callback)` — subscribes to `postgres_changes` on `online_orders` table filtered by `id`
+- `unsubscribeFromOrder(channel)` — removes the channel
+- Storage adapter is platform-aware: `AsyncStorage` on native, `localStorage` on web
+
+### Constants
+- `constants/Colors.ts` — full light/dark color tokens. Access via `Colors[colorScheme].tokenName`
+- `constants/Layout.ts` — spacing (`Spacing`), layout dimensions (`Layout`), breakpoints, animation timings, z-index layers
+- `constants/Typography.ts` — typography scale
+
+### Components
+- `components/themed/` — reusable themed components: `ThemedButton`, `ThemedCard`, `ThemedInput`, `ThemeToggle`, `EmptyState`, `LoadingStates`
+- `components/ui/` — `IconSymbol` (SF Symbols on iOS, fallback on Android/web), `TabBarBackground`
+- `components/CustomTabBar.tsx` — custom tab bar renderer
+- `components/Loading.tsx` — full-screen loading component used during auth restore and font loading
+- `components/ConfirmModal.tsx` — reusable confirmation dialog
+- `components/OrderSplashScreen.tsx` — animated splash shown after order placement
+- `components/StoreFiltersBar.tsx` — horizontal filter chips for store listing
+- `components/StoreSearchBar.tsx` — search input for store discovery
+
+### Hooks
+- `hooks/useRefresh.ts` — `useRefresh(callback, minRefreshTime?)` wraps pull-to-refresh; enforces a minimum display duration (default 1000 ms) for the refresh indicator
+
+## Theming Pattern
+Every component that uses color should follow this pattern:
+```tsx
+const colorScheme = useAppColorScheme(); // from ThemeContext
+const colors = Colors[colorScheme];
+// use colors.primary, colors.background, etc.
+```
+
+## Auth Flow
+1. App starts → `AuthContext` restores user from AsyncStorage
+2. If not authenticated → auth stack shown (`auth/login` → `auth/onboarding` for new users)
+3. `authenticateWithMobile(phone)` → if new customer, backend returns error message containing "Name is required for new customer" → redirect to onboarding to collect name → retry with name
+4. On success → user saved to AsyncStorage, `isAuthenticated = true`, main tab navigator shown
+
+## Web Deployment
+Configured for Vercel via `vercel.json`. Build command: `npx expo export --platform web` → outputs to `dist/`. All routes rewrite to `index.html` (SPA mode). The app uses React Native New Architecture (`newArchEnabled: true` in `app.json`).
+
+## Design System
+- Brand: Kerala Forest Green (`#2E7D32` light / `#4CAF50` dark)
+- Secondary: Warm Coral (`#FF8A65` light)
+- Accent: Bright Yellow (`#FFD54F` light)
+- All prices in ₹ (Indian Rupees)
+- Phone numbers use Indian format (+91 prefix, 10-digit numbers)
