@@ -72,12 +72,14 @@ export const ApiService = {
   products: {
     // Get products for a store (using POS API)
     getStoreProducts: async (params: {
+      storeId?: number;
       search?: string;
       category?: string;
       barcode?: string;
       limit?: number;
     }) => {
       const searchParams = new URLSearchParams();
+      if (params.storeId) searchParams.append("storeId", params.storeId.toString());
       if (params.search) searchParams.append("search", params.search);
       if (params.category && params.category !== "all")
         searchParams.append("category", params.category);
@@ -166,6 +168,7 @@ export const ApiService = {
 
     // Place delivery order (new customer delivery API)
     placeDeliveryOrder: async (orderData: {
+      storeId: number;
       items: Array<{
         storeProductId: number;
         quantity: number;
@@ -174,10 +177,11 @@ export const ApiService = {
       specialInstructions?: string;
       paymentMethodId: number;
     }) => {
-      const response = await fetch(`${API_BASE_URL}/store/1/delivery/orders`, {
+      const { storeId, ...body } = orderData;
+      const response = await fetch(`${API_BASE_URL}/store/${storeId}/delivery/orders`, {
         method: "POST",
         headers: await getAuthHeaders(),
-        body: JSON.stringify(orderData),
+        body: JSON.stringify(body),
       });
       return handleResponse(response);
     },

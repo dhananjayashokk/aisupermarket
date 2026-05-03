@@ -112,7 +112,7 @@ export default function StoreDetailScreen() {
     try {
       setLoadingProducts(true);
       const response = await ApiService.products.getStoreProducts({
-        // We can add store-specific filters here if needed
+        storeId: parseInt(id as string),
         limit: 100,
       });
 

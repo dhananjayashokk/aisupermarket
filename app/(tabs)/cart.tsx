@@ -40,6 +40,7 @@ export default function CartScreen() {
 
       // Prepare order data according to the API specification
       const orderData = {
+        storeId: typeof storeId === 'string' ? parseInt(storeId) : storeId,
         items: cartState.items.map(item => ({
           storeProductId: item.id, // Using item.id as storeProductId
           quantity: item.quantity
